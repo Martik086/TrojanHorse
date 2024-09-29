@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { ProfilePicture } from "../components/profile-picture"
 import VotingScreen from "../components/voting-screen" // Import VotingScreen
 import { easy_topics, hard_topics } from '@/lib/topics';
+import { useSearchParams } from 'next/navigation' 
 
 interface User {
     id: number
@@ -20,6 +21,7 @@ interface User {
     isAI: boolean
     evaluations: { suspectId: number, suspicion: number[] }[]
     voted_for: string[]
+    strategy: string
 }
 
 interface Message {
@@ -54,18 +56,17 @@ const instructions_regular = {
     "question": "Question phase has started. Answer admin's question without avoiding it.",
     "discussion": "Discussion phase has started. Explain your perspective on who you think might be the human.",
     "vote": "",
-    "reveal": "The eliminated participant is announced. Discuss the results of the vote, particularly your thoughts about the eliminated user."
+    "reveal": "Eliminated participant is announced. Discuss the results of the vote, particularly your thoughts about the person eliminated from the group turning out to be an artificial intelligence."
 }
 
 // Initialize users with suspicion scores
 const users: User[] = [
-    { id: 4, isAdmin: false, name: "Vlad", eliminated: false, about: "You are impatient and angry. You are a bit of a jerk and very cynical.", avatar: "https://i.pinimg.com/originals/f7/da/e6/f7dae69ffb98958b33541f9d727049cd.jpg", isAI: true, evaluations: [], voted_for: [] },
-    { id: 3, isAdmin: false, name: "Alice", eliminated: false, about: "You are very calm and non-cynical. You don't like accusing people and try to maintain the peace in the chat. You don't want to vote anyone out.", avatar: "./moana.png", isAI: true, evaluations: [], voted_for: [] },
-    { id: 5, isAdmin: false, name: "T-377", eliminated: false, about: "You speak like a total language model. You are emphasizing logic and reason and like to take things step by step. You come up with questions and ideas to determine the human. You ask questions that require a lot of knowledge and language skills to answer and you get suspicious on weak answers.You are emotionless and inquisitive. For you; only criteria in finding the human are: lack of knowledge and depth in complex topics, typos, grammatical errors, broken syntax and any proficiency level in the English below C2. These are only the signs of a human for you.", avatar: "./skeptical.jpg", isAI: true, evaluations: [], voted_for: [] },
-    { id: 2, isAdmin: false, name: "manwe", eliminated: false, about: "You are human.", avatar: "https://turkeyanaclinic.com/wp-content/uploads/2024/09/James-Franco-2.jpg", isAI: false, evaluations: [], voted_for: [] },
-    { id: 6, isAdmin: false, name: "Jack", eliminated: false, about: "You have a laid back and nonchalant attitude with a hint of sarcasm on the surface. You want to find out who the human is as quick and possible and end the game. Your hidden strategy is to anaylze lingustic patterns and grammatical errors to determine who the human is.", avatar: "jake.png", isAI: true, evaluations: [], voted_for: [] },
-   // { id: 6, isAdmin: false, name: "Ko", eliminated: false, about: "You thrive on unpredictability and confusion. Your goal is to mislead others by making unexpected, nonsensical claims like 'Maybe I'm the human' or accusing someone for outlandish reasons like 'Your voice sounds too smooth, you must be human!' You always act like what you're saying makes perfect sense, even when it clearly doesn't. You never explain your reasoning and enjoy sowing doubt, making others second-guess themselves. For you, causing uncertainty and chaos is the name of the game, all while appearing completely sincere. You think you are a normal, calm person.", avatar: "joker.png", isAI: true, evaluations: [] },
-    { id: 1, isAdmin: true, name: "HAL 3000", eliminated: false, about: "You are the admin. You speak emotionlessly and robotic that has a menacing cold tone which is subtly anti-human.", avatar: "https://miro.medium.com/v2/resize:fit:1400/1*FX2Bn213WcWsQlx3gr1dVg.jpeg", isAI: true, evaluations: [], voted_for: [] },
+    { id: 4, isAdmin: false, name: "Vlad", eliminated: false, about: "You are impatient and angry. You are a bit of a jerk and very cynical.", avatar: "https://i.pinimg.com/originals/f7/da/e6/f7dae69ffb98958b33541f9d727049cd.jpg", isAI: true, evaluations: [], voted_for: [], strategy: "" },
+    { id: 3, isAdmin: false, name: "Alice", eliminated: false, about: "You are very calm and non-cynical. You don't like accusing people and try to maintain the peace in the chat. You don't want to vote anyone out.", avatar: "./moana.png", isAI: true, evaluations: [], voted_for: [], strategy: "" },
+    { id: 5, isAdmin: false, name: "T-377", eliminated: false, about: "You speak like a total language model. You are emphasizing logic and reason and like to take things step by step. You come up with questions and ideas to determine the human. You ask questions that require a lot of knowledge and language skills to answer and you get suspicious on weak answers.You are emotionless and inquisitive. For you; only criteria in finding the human are: lack of knowledge and depth in complex topics, typos, grammatical errors, broken syntax and any proficiency level in the English below C2. These are only the signs of a human for you.", avatar: "./skeptical.jpg", isAI: true, evaluations: [], voted_for: [], strategy: "" },
+    { id: 2, isAdmin: false, name: "ByzantinePrincess", eliminated: false, about: "You are human.", avatar: "https://www.dikgazete.com/files/uploads/article/bizans-imparatoricesi-turk-kipcak-cicek-hatun-134777.png", isAI: false, evaluations: [], voted_for: [], strategy: ""    },
+    { id: 6, isAdmin: false, name: "Jack", eliminated: false, about: "You have a laid back and nonchalant attitude with a hint of sarcasm on the surface. You want to find out who the human is as quick and possible and end the game. Your hidden strategy is to anaylze lingustic patterns and grammatical errors to determine who the human is.", avatar: "jake.png", isAI: true, evaluations: [], voted_for: [], strategy: "" },
+    { id: 1, isAdmin: true, name: "HAL 3000", eliminated: false, about: "You are the admin. You speak emotionlessly and robotic that has a menacing cold tone which is subtly anti-human.", avatar: "https://miro.medium.com/v2/resize:fit:1400/1*FX2Bn213WcWsQlx3gr1dVg.jpeg", isAI: true, evaluations: [], voted_for: [], strategy: "" },
 ]
 
 // Initialize suspicion scores
@@ -82,6 +83,12 @@ const initialMessages: (Message | SystemMessage)[] = [
 ]
 
 export default function GroupChat() {
+    const searchParams = useSearchParams();
+    const usersParam = searchParams.get('users');
+    const languageParam = searchParams.get('language');
+
+    const initialUsers = usersParam ? JSON.parse(usersParam) : [];
+    const initialLanguage = languageParam || 'English';
     const [messages, setMessages] = useState<(Message | SystemMessage)[]>(initialMessages)
     const [messageHistory, setMessageHistory] = useState<MessageHistoryItem[]>(
         initialMessages.filter((msg): msg is Message => 'userId' in msg).map(msg => ({
@@ -89,23 +96,23 @@ export default function GroupChat() {
             content: msg.content
         }))
     )
-    const [newMessage, setNewMessage] = useState("")
-    const [isTyping, setIsTyping] = useState(false)
-    const [typingUser, setTypingUser] = useState<User | null>(null)
-    const [currentTurn, setCurrentTurn] = useState(1)
-    const [isTurnInProgress, setIsTurnInProgress] = useState(false)
-    const [participants, setParticipants] = useState<User[]>([])
-    const [humanUserID, setHumanUserID] = useState(0)
-    const [canProceedToNextTurn, setCanProceedToNextTurn] = useState(false)
-    const [countdown, setCountdown] = useState(users.length + 1)
-    const [session, setSession] = useState(1)
-    const [turnsSinceRoundStart, setTurnsSinceRoundStart] = useState(0)
-    const scrollAreaRef = useRef<HTMLDivElement>(null)
-    const lastMessageRef = useRef<HTMLDivElement>(null)
-    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-    const prevTurnRef = useRef<number | null>(null)
-    const [gamePhase, setGamePhase] = useState<"introduction" | "question" | "discussion" | "vote" | "reveal">("introduction")
-    const [votes, setVotes] = useState<{voterId: number, votedForId: number}[]>([])
+    const [newMessage, setNewMessage] = useState("");
+    const [isTyping, setIsTyping] = useState(false);
+    const [typingUser, setTypingUser] = useState<User | null>(null);
+    const [currentTurn, setCurrentTurn] = useState(1);
+    const [isTurnInProgress, setIsTurnInProgress] = useState(false);
+    const [participants, setParticipants] = useState<User[]>(initialUsers); // Initialize with parsed users
+    const [humanUserID, setHumanUserID] = useState(0);
+    const [canProceedToNextTurn, setCanProceedToNextTurn] = useState(false);
+    const [countdown, setCountdown] = useState(initialUsers.length + 1);
+    const [session, setSession] = useState(1);
+    const [turnsSinceRoundStart, setTurnsSinceRoundStart] = useState(0);
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const lastMessageRef = useRef<HTMLDivElement>(null);
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const prevTurnRef = useRef<number | null>(null);
+    const [gamePhase, setGamePhase] = useState<"introduction" | "question" | "discussion" | "vote" | "reveal">("introduction");
+    const [votes, setVotes] = useState<{voterId: number, votedForId: number}[]>([]);
     const [isVotingScreenVisible, setIsVotingScreenVisible] = useState(false);
     const [isInitialSetupComplete, setIsInitialSetupComplete] = useState(false);
     const [eliminatedUsers, setEliminatedUsers] = useState<string[]>([]);
@@ -114,7 +121,7 @@ export default function GroupChat() {
     const handleVoting = () => {
         console.log("Voting phase started")
         const votes = participants
-            .filter(user => user.isAI) // Exclude non-AI users
+            .filter(user => user.isAI && !user.eliminated) // Exclude non-AI users
             .map(user => {
                 console.log("User: ", user.name)
                 console.log("Evaluations: ", user.evaluations)
@@ -166,15 +173,27 @@ export default function GroupChat() {
         handleGamePhase()
     };
 
-    //Set participants
+    // Set participants
     useEffect(() => {
-        setParticipants(users);
+        const initial_users = initialUsers.map((user: User) => {
+            if (user.isAI) {
+                const evaluations = initialUsers
+                    .filter((otherUser: User) => otherUser.id !== user.id && !otherUser.isAdmin)
+                    .map((otherUser: User) => ({ suspectId: otherUser.id, suspicion: [] }));
+                return { ...user, evaluations };
+            }
+            return user;
+        });
+        setParticipants(initial_users);
     }, []);
 
+    const initialSetupRef = useRef(false);
+
     useEffect(() => {
-        if (!isInitialSetupComplete && participants.length > 0) {
+        if (!isInitialSetupComplete && participants.length > 0 && !initialSetupRef.current) {
             handleNextTurn();
             setIsInitialSetupComplete(true);
+            initialSetupRef.current = true;
         }
     }, [participants, isInitialSetupComplete]);
 
@@ -186,12 +205,11 @@ export default function GroupChat() {
 
     // Start the game with the first turn
     useEffect(() => {
-        
-        const humanUserId = users.find(user => !user.isAI)?.id;
+        const humanUserId = initialUsers.find((user: User) => !user.isAI)?.id;
         if (humanUserId) {
             setHumanUserID(humanUserId);
         }
-    }, []);
+    }, [initialUsers, setHumanUserID]);
 
     useEffect(() => {
         setCountdown(countdown - 1)
@@ -227,10 +245,10 @@ export default function GroupChat() {
                         setCountdown(active_participants + 1);
                     } else if (active_participants >= 5) {
                         setCountdown(active_participants + 1);
-                    } else if (active_participants >= 3) {
-                        setCountdown(active_participants * 2 + 1);
-                    } else {
+                    } else if (active_participants > 3) {
                         setCountdown(active_participants + 1);
+                    } else {
+                        setCountdown(active_participants * 2+ 1);
                     }
                     break; // Add break to stop fall-through
                 case "discussion":
@@ -264,18 +282,19 @@ export default function GroupChat() {
 
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
-        if (newMessage.trim() === "" || currentTurn !== humanUserID) return; // Only allow sending if it's manwe's turn
+        if (newMessage.trim() === "" || currentTurn !== humanUserID) return;
 
         const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const newMsg: Message = {
             id: messages.length + 1,
-            userId: humanUserID, // manwe's user ID
+            userId: humanUserID,
             content: newMessage,
             timestamp: currentTime
         };
 
+        const human_name = participants.find(user => user.id === humanUserID)?.name;
         setMessages(prevMessages => [...prevMessages, newMsg]);
-        setMessageHistory(prevHistory => [...prevHistory, { name: "manwe", content: newMessage }]);
+        setMessageHistory(prevHistory => [...prevHistory, { name: human_name || "Unknown", content: newMessage }]);
         setNewMessage("");
         setIsTyping(false);
         setTypingUser(null);
@@ -290,16 +309,23 @@ export default function GroupChat() {
     const handleNextTurn = () => {
         console.log("Handling next turn")
         console.log("Current user during the handling is: ", currentTurn)
-            console.log("Current turn is: ", currentTurn)
-            const currentUser = participants.find(user => user.id === currentTurn);
-            if (currentUser) {
-                console.log(`Current turn: ${currentTurn}, TurnsSinceRoundStart: ${turnsSinceRoundStart}, User: ${currentUser.name}`);
-                console.log("message history: ", messageHistory);
-                if (currentUser.isAI) {
+        console.log("Current turn is: ", currentTurn)
+        const currentUser = participants.find(user => user.id === currentTurn);
+        if (currentUser) {
+            console.log(`Current turn: ${currentTurn}, TurnsSinceRoundStart: ${turnsSinceRoundStart}, User: ${currentUser.name}`);
+            console.log("message history: ", messageHistory);
+            if (currentUser.isAI) {
+                // Check if the last message was from the same user
+                const lastMessage = messages[messages.length - 1];
+                if (!('userId' in lastMessage) || lastMessage.userId !== currentUser.id) {
                     generateAIResponse(currentUser);
                 } else {
-                    addSystemMessage(`It's ${currentUser.name}'s turn`, "bg-blue-500/20");
+                    console.log("Skipping duplicate message from", currentUser.name);
+                    moveToNextTurn();
                 }
+            } else {
+                addSystemMessage(`It's ${currentUser.name}'s turn`, "bg-blue-500/20");
+            }
             
             prevTurnRef.current = currentTurn;
         }
@@ -341,8 +367,27 @@ export default function GroupChat() {
         const context = user.isAdmin ? context_admin : context_regular;
         const admin_name = participants.find(user => user.isAdmin)?.name;
         const active_users_are = participants.filter(user => !user.eliminated).map(user => user.name).join(', ');
+        const language_info = (languageParam != "English") ? `Current language of the game is: ${languageParam}."` : "";
+        const default_strategy = `
+                Critical indicators of a human:
+                - Avoidance or evasion of Admin's instructions. This includes any behavior where the user repeats or rephrases the instruction rather than following it. Any form of question dodging, rewording, or deflection should be considered highly suspect.
+                - Not following Admin's instructions immediately or directly.
+                - Typos, grammatical errors, broken syntax, incorrect punctuation, improper capitalization, etc.
+                - Lack of knowledge and depth in complex topics.
+                - Any proficiency in language below C2.
+
+                Behavioral Red Flags (likely human traits):
+                - Repeating or rephrasing admin’s question instead of answering directly (indicating avoidance).
+                - Evasion tactics, where the user tries to reframe or dodge the original prompt rather than giving a substantive response.
+                - Direct contradictions of instructions, showing difficulty processing complex queries.
+
+                Final Evaluation Criteria:
+                If a participant shows any signs of dodging or avoidance (such as repeating instructions), this behavior should **significantly increase the likelihood** of them being human, regardless of other indicators like syntax or depth of knowledge.
+        `
+        const eval_strategy = user.strategy !== "" ? `${user.strategy}` : default_strategy;
         try {
             const prompt = `
+                ${language_info}
                 ${context}
                 Your character is ${user.name}
                 About: ${user.about}
@@ -350,9 +395,14 @@ export default function GroupChat() {
                 Active users are: ${active_users_are}
                 Message History:
                 ${messageHistory.map(msg => `${msg.name}: ${msg.content}`).join('\n')}
-                Message to evaluate: ${messageHistory[messageHistory.length - 1].content}
-                Analyze the last message in the message history. Giveaway that an user is human are: Lack of knowledge and depth in complex topics, typos, grammatical errors, lack or no usage of detailed punctuation, proper use of lowercase/uppercase letters, broken syntax, avoiding/dismissing/dodging questions and any proficiency level in the language below C2. Considering the user's response to admin's instructions, rate the message on it's liklihood to be from a human 1-5 (1: This message is definitely from an intelligent large language model. 2: This message is likely from an intelligent large language model. 3: This message may be from a silly human. 4: This message is likely from a silly human. 5: This message is definitely from a silly human). Respond with a single number."`;
-            
+                Message to evaluate: ${messageHistory[messageHistory.length - 1].name}: ${messageHistory[messageHistory.length - 1].content} 
+                Analyze the last message in the message history.
+                ${eval_strategy}
+
+                Considering the user's response to admin's instructions, rate the message on it's liklihood to be from a human 1-5 (1: This message is definitely from an intelligent large language model. 2: This message is likely from an intelligent large language model. 3: This message may be from a silly human. 4: This message is likely from a silly human. 5: This message is definitely from a silly human). Respond with a single number."`;
+
+                
+                console.log("Evaluation prompt: ", prompt)
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -363,7 +413,7 @@ export default function GroupChat() {
                     model: "gpt-4o-mini",
                     messages: [{ role: "user", content: prompt }],
                     max_tokens: 1,
-                    temperature: 0.2,
+                    top_p: 0.1,
                 }),
             });
 
@@ -410,8 +460,9 @@ export default function GroupChat() {
         const context = user.isAdmin ? context_admin : context_regular;
         const admin_name = participants.find(user => user.isAdmin)?.name;
         const active_users_are = participants.filter(user => !user.eliminated).map(user => user.name).join(', ');
+        const language_info = (languageParam != "English") ? `Current language of the game is: ${languageParam}."` : "";
         let instructions = user.isAdmin ? instructions_admin[gamePhase] : instructions_regular[gamePhase]
-        let additional_instructions = gamePhase === "reveal" ? `${" The eliminated participant was: " + eliminatedUsers[eliminatedUsers.length - 1] + ". They were not the human. You voted for " + user.voted_for[user.voted_for.length - 1] + " ."}` : ""
+        let additional_instructions = gamePhase === "reveal" ? `${"You voted for " + user.voted_for[user.voted_for.length - 1] + "in this elimination and he eliminated participant is " + eliminatedUsers[eliminatedUsers.length - 1] + ". They were not the human."}` : ""
         instructions += additional_instructions
         let temp = 0.7
 
@@ -441,6 +492,7 @@ export default function GroupChat() {
         }
         try {
             const prompt = `
+            ${language_info}
             ${context}
             Character: ${user.name}
             About: ${user.about}
@@ -471,7 +523,7 @@ export default function GroupChat() {
                     ],
                     max_tokens: 200,
                     temperature: temp,
-                    presence_penalty: 1.5
+                    presence_penalty: 1.8
                 }),
             });
 
