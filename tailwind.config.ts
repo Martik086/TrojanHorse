@@ -9,11 +9,29 @@ const config: Config = {
   ],
   theme: {
   	extend: {
-  		colors: {
-  			background: 'hsl(var(--background))',
-  			foreground: 'hsl(var(--foreground))',
-  			card: {
-  				DEFAULT: 'hsl(var(--card))',
+		fontFamily: {
+			sans: ['Inter', "serif"],
+		   },
+		   fontSize: {
+			'xs': '0.825rem',
+			'sm': '0.963rem',
+			'base': '1.1rem',
+			'lg': '1.238rem',
+			'xl': '1.375rem',
+			'2xl': '1.65rem',
+			'3xl': '2.062rem',
+			'4xl': '2.475rem',
+			'5xl': '3.3rem',
+			'6xl': '4.125rem',
+			'7xl': '4.95rem',
+			'8xl': '6.6rem',
+			'9xl': '8.8rem'
+		},
+		colors: {
+			background: 'hsl(var(--background))',
+			foreground: 'hsl(var(--foreground))',
+			card: {
+				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
   			},
   			popover: {

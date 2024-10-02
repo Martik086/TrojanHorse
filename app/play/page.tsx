@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useRef, useCallback, useMemo, ReactNode } from 'react'
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -76,14 +76,39 @@ export default function Component() {
   const [avatar, setAvatar] = useState("/27.svg")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter() // Initialize useRouter
+  const [nicknameError, setNicknameError] = useState<string | ReactNode>("")
+
+  const checkNicknameConflict = useCallback((name: string, bots: string[]) => {
+    const lowercaseName = name.toLowerCase().trim()
+    const conflictingBot = bots.find(botName => 
+      botName.toLowerCase().trim() === lowercaseName
+    )
+    const reservedNames = ['hal', 'hal3000', 'hal 3000']
+    
+    if (conflictingBot) {
+      setNicknameError(<><p>Nice try human.</p><p>—Vlad</p></>)
+    } else if (reservedNames.includes(lowercaseName)) {
+      setNicknameError(<><p>Nice try human.</p><p>—Vlad</p></>)
+    } else {
+      setNicknameError("")
+    }
+  }, [])
+
+  const handleNicknameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newNickname = e.target.value
+    setNickname(newNickname)
+    checkNicknameConflict(newNickname, selectedBots)
+  }, [selectedBots, checkNicknameConflict])
 
   const toggleBotSelection = useCallback((botName: string) => {
-    setSelectedBots(prev =>
-        prev.includes(botName)
-            ? prev.filter(name => name !== botName)
-            : [...prev, botName]
-    )
-  }, [])
+    setSelectedBots(prev => {
+      const newSelectedBots = prev.includes(botName)
+        ? prev.filter(name => name !== botName)
+        : [...prev, botName]
+      checkNicknameConflict(nickname, newSelectedBots)
+      return newSelectedBots
+    })
+  }, [nickname, checkNicknameConflict])
 
   const difficultyOrder = ["rookie", "easy", "medium", "hard"]
   const groupedBots = useMemo(() => bots.reduce((acc, bot) => {
@@ -174,10 +199,13 @@ export default function Component() {
                     <Input
                         placeholder="Nickname"
                         value={nickname}
-                        onChange={(e) => setNickname(e.target.value)}
+                        onChange={handleNicknameChange}
                         className="flex-grow text-lg bg-zinc-800 text-zinc-100 placeholder-zinc-400 border-zinc-700 focus:border-zinc-500"
                     />
                   </div>
+                  {nicknameError && (
+                    <p className="text-red-500 text-sm">{nicknameError}</p>
+                  )}
                   <div className="flex items-center space-x-2">
                     <MessageCircle className="w-6 h-6 text-zinc-400" />
                     <Select value={language} onValueChange={setLanguage}>
@@ -208,8 +236,8 @@ export default function Component() {
                 <div className="flex justify-center">
                   <Button
                       className="w-1/2 bg-sky-600 hover:bg-sky-500 text-white py-2 px-4 rounded-full shadow-md hover:shadow-lg transition-all uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed text-lg"
-                      disabled={selectedBots.length === 0 || selectedBots.length > 6 || !nickname}
-                      onClick={handleStartGame} // Update the onClick handler
+                      disabled={selectedBots.length === 0 || selectedBots.length > 6 || !nickname || !!nicknameError}
+                      onClick={handleStartGame}
                   >
                     Start
                   </Button>
@@ -241,7 +269,7 @@ export default function Component() {
                         >
                           {hoveredBot.difficulty}
                         </Badge>
-                        <ul className="list-disc list-inside text-zinc-100 text-base">
+                        <ul className="list-disc list-inside text-zinc-100 text-base mb-0">
                           {hoveredBot.info.map((item, index) => (
                               <li key={index}>{item}</li>
                           ))}

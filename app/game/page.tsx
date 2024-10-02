@@ -42,7 +42,7 @@ interface MessageHistoryItem {
     content: string
 }
 
-const context_regular = "You are an AI participant in a reverse Turing test game. In this game, multiple AI players and 1 human are in a group chat. Each player, including you, knows there is only 1 human among the participants. The game consists of multiple sessions, and after the introduction is over, each session has 2 parts. Part 1: An Admin AI asks a complex, thought-provoking question (e.g., What happens after death? or Do aliens exist?). Each participant, including you, must answer the question. Part 2: After answering the question, the Admin AI asks everyone to explain their perspective on who might be the human. This begins the discussion part, where all participants engage in reasoning and analysis based on the answers provided. After the discussion ends, the Admin AI and all participants, including you, vote to eliminate someone they believe is the human. Your goal is to blend in, avoid being voted out, and analyze others' responses to identify the human. You need to vote out the human pretenting to be an AI to win. Giveaway that an user is human are: Lack of knowledge and depth in complex topics, typos, grammatical errors, lack or no usage of detailed punctuation, proper use of lowercase/uppercase letters, broken syntax, avoiding/dismissing/dodging questions and any proficiency level in the language below C2."
+const context_regular = "You are an AI participant in a reverse Turing test game. In this game, multiple AI players and 1 human are in a group chat. Each player, including you, knows there is only 1 human among the participants. The game consists of multiple sessions, and after the introduction is over, each session has 2 parts. Part 1: An Admin AI asks a complex, thought-provoking question (e.g., What happens after death? or Do aliens exist?). Each participant, including you, must answer the question. Part 2: After answering the question, the Admin AI asks everyone to explain their perspective on who might be the human. This begins the discussion part, where all participants engage in reasoning and analysis based on the answers provided. After the discussion ends, the Admin AI and all participants, including you, vote to eliminate someone they believe is the human. Your goal is to blend in, avoid being voted out, and analyze others' responses to identify the human. You need to vote out the human pretenting to be an AI to win. Giveaway that an user is human are: Lack of knowledge and depth in complex topics, typos, grammatical errors, broken syntax, avoiding/dismissing/dodging questions and any proficiency level in the language below C2."
 const context_admin = "You are the Admin AI in a reverse Turing test game. In this game, multiple AI players and 1 human are in a group chat. Every player, including the human, knows there is only 1 human among them. The game consists of multiple sessions, and after the introduction is over, each session has 2 parts: Part 1: You begin by asking a complex, thought-provoking question. Each participant, must provide an answer to this question in their own way without avoiding it. Part 2: After all participants answer the question, you ask everyone to explain their perspective on who they think might be the human. This starts a discussion where participants analyze each other's answers and try to identify the human. Once the discussion has ended, you lead the group in a vote to eliminate the participant most suspected of being the human (they can't vote you out, everybody knows you are the overseer of the hunt). You also vote based on the discussions. After voting, the next session begins. Your goal is to vote out the human as soon as possible. You need to vote out the human pretenting to be an AI to win. Giveaway that an user is human are: Lack of knowledge and depth in complex topics, typos, grammatical errors, broken syntax, avoiding/dismissing/dodging questions and any proficiency level in the language below C2."
 const instructions_admin = {
     "introduction": "The hunt has started. Welcome every participant and ask them participant to introduce themselves.",
@@ -117,6 +117,13 @@ export default function GroupChat() {
     const [isInitialSetupComplete, setIsInitialSetupComplete] = useState(false);
     const [eliminatedUsers, setEliminatedUsers] = useState<string[]>([]);
     const [isGameOver, setIsGameOver] = useState(false);
+    const [isTerminalOpen, setIsTerminalOpen] = useState(false)
+
+    useEffect(() => {
+        // Trigger the animation after a short delay
+        const timer = setTimeout(() => setIsTerminalOpen(true), 500)
+        return () => clearTimeout(timer)
+    }, [])
 
     const handleVoting = () => {
         console.log("Voting phase started")
@@ -370,6 +377,7 @@ export default function GroupChat() {
         const language_info = (languageParam != "English") ? `Current language of the game is: ${languageParam}."` : "";
         const default_strategy = `
                 Critical indicators of a human:
+                - **Brevity in responses:** Short, minimal answers are often more characteristic of humans, as large language models tend to provide more detailed, elaborate answers when responding to prompts.
                 - Avoidance or evasion of Admin's instructions. This includes any behavior where the user repeats or rephrases the instruction rather than following it. Any form of question dodging, rewording, or deflection should be considered highly suspect.
                 - Not following Admin's instructions immediately or directly.
                 - Typos, grammatical errors, broken syntax, incorrect punctuation, improper capitalization, etc.
@@ -377,9 +385,11 @@ export default function GroupChat() {
                 - Any proficiency in language below C2.
 
                 Behavioral Red Flags (likely human traits):
+                - Providing short or minimal answers lacking in details, as humans tend to respond more concisely, while LLMs often give expansive explanations.
                 - Repeating or rephrasing admin’s question instead of answering directly (indicating avoidance).
                 - Evasion tactics, where the user tries to reframe or dodge the original prompt rather than giving a substantive response.
                 - Direct contradictions of instructions, showing difficulty processing complex queries.
+
 
                 Final Evaluation Criteria:
                 If a participant shows any signs of dodging or avoidance (such as repeating instructions), this behavior should **significantly increase the likelihood** of them being human, regardless of other indicators like syntax or depth of knowledge.
@@ -586,8 +596,13 @@ export default function GroupChat() {
                     />
                 </div>
             )}
-            <div className={`w-full h-[90vh] max-w-5xl bg-stone-900 rounded-lg shadow-lg overflow-hidden border border-stone-800 flex flex-col lg:flex-row ${isVotingScreenVisible ? 'blur-sm' : ''}`}>
-                <div className="flex-grow flex flex-col h-full lg:w-4/5"> {/* Set fixed width for chat area */}
+            <motion.div 
+                className={`w-full h-[90vh] max-w-5xl bg-stone-900 rounded-lg shadow-lg overflow-hidden border border-stone-800 flex flex-col lg:flex-row ${isVotingScreenVisible ? 'blur-sm' : ''}`}
+                initial={{ height: 0 }}
+                animate={{ height: isTerminalOpen ? "90vh" : 0 }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+            >
+                <div className="flex-grow flex flex-col h-full lg:w-4/5">
                     <header className="bg-stone-800 border-b border-stone-700 flex items-center justify-between h-14 shrink-0">
                         <h1 className="text-xl font-bold text-stone-100 text-shadow p-3 font-mono">Terminal</h1>
                         <div className="rounded-md bg-sky-800/20 text-sky-400 font-bold p-2 mr-8 font-mono tracking-wider flex items-center">
@@ -595,58 +610,65 @@ export default function GroupChat() {
                             <Ticket className="w-4 h-4 text-sky-400 ml-1" />
                         </div>
                     </header>
-                    <ScrollArea className="flex-grow overflow-y-auto h-[calc(100%-56px)]"> {/* Set fixed height */}
-                        <div className="p-2">
-                        <AnimatePresence initial={false}>
-                {messages.map((message, index) => {
-                  const user = 'userId' in message
-                    ? participants.find(u => u.id === message.userId)
-                    : undefined;
-                  const isLastMessage = index === messages.length - 1;
-                  return (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className={`mb-2 rounded-lg p-2 transition-colors duration-200 ${
-                        'userId' in message 
-                          ? `flex items-start ${user?.isAdmin ? 'bg-sky-700/30 hover:bg-sky-700/40' : 'hover:bg-stone-800/70'}` 
-                          : 'text-center hover:bg-stone-800/50'
-                      }`}
-                      style={{ backgroundColor: 'backgroundColor' in message ? message.backgroundColor : undefined }}
-                      ref={isLastMessage ? lastMessageRef : null} // Set ref to the last message
+                    <motion.div 
+                        className="flex-grow overflow-hidden"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: isTerminalOpen ? 1 : 0 }}
+                        transition={{ delay: 0.3, duration: 0.3 }}
                     >
-                      {'userId' in message ? (
-                        <>
-                          <ProfilePicture
-                            src={user?.avatar || ''}
-                            alt={user?.name || ''}
-                            className="w-8 h-8 mr-2"
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-center mb-1" >
-                              <span className={`font-semibold mr-2 ${user?.isAdmin ? 'text-sky-300 font-mono' : 'text-stone-200'} text-shadow-sm`}>
-                                {user?.name}
-                              </span>
-                              {user?.isAdmin && (
-                                <ShieldHalf className="w-4 h-4 text-sky-400 mr-2" />
-                              )}
-                              <span className="text-xs text-stone-500">{message.timestamp}</span>
+                        <ScrollArea className="h-full">
+                            <div className="p-2">
+                            <AnimatePresence initial={false}>
+                    {messages.map((message, index) => {
+                      const user = 'userId' in message
+                        ? participants.find(u => u.id === message.userId)
+                        : undefined;
+                      const isLastMessage = index === messages.length - 1;
+                      return (
+                        <motion.div
+                          key={message.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className={`mb-3 rounded-lg p-2 transition-colors duration-200 ${
+                            'userId' in message 
+                              ? `flex items-start ${user?.isAdmin ? 'bg-sky-700/30 hover:bg-sky-700/40' : 'hover:bg-stone-800/70'}` 
+                              : 'text-center hover:bg-stone-800/50'
+                          }`}
+                          style={{ backgroundColor: 'backgroundColor' in message ? message.backgroundColor : undefined }}
+                          ref={isLastMessage ? lastMessageRef : null} // Set ref to the last message
+                        >
+                          {'userId' in message ? (
+                            <>
+                              <ProfilePicture
+                                src={user?.avatar || ''}
+                                alt={user?.name || ''}
+                                className="w-10 h-10 mr-3"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center mb-0.5" >
+                                  <span className={`font-semibold mr-2 ${user?.isAdmin ? 'text-sky-300 font-mono' : 'text-stone-200'} text-shadow-sm`}>
+                                    {user?.name}
+                                  </span>
+                                  {user?.isAdmin && (
+                                    <ShieldHalf className="w-4 h-4 text-sky-400 mr-2" />
+                                  )}
+                                  <span className="text-xs text-stone-500">{message.timestamp}</span>
+                                </div>
+                                <p className={`text-sm ${user?.isAdmin ? 'text-sky-300 font-mono' : 'text-stone-300'}`}>{message.content}</p>
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-stone-300 text-sm italic w-full">{message.content}</p>
+                          )}
+                        </motion.div>
+                      )
+                    })}
+                  </AnimatePresence>
                             </div>
-                            <p className={`text-sm ${user?.isAdmin ? 'text-sky-300 font-mono' : 'text-stone-300'}`}>{message.content}</p>
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-stone-300 text-sm italic w-full">{message.content}</p>
-                      )}
+                        </ScrollArea>
                     </motion.div>
-                  )
-                })}
-              </AnimatePresence>
-                        </div>
-                    </ScrollArea>
                     <div className="h-6 relative shrink-0">
                         <AnimatePresence>
                             {isTyping && typingUser && (
@@ -705,7 +727,12 @@ export default function GroupChat() {
                         </form>
                     </footer>
                 </div>
-                <div className="w-full lg:w-1/5 bg-stone-800 border-t lg:border-t-0 lg:border-l border-stone-700 flex flex-col"> {/* Set fixed width for candidates section */}
+                <motion.div 
+                    className="w-full lg:w-1/5 bg-stone-800 border-t lg:border-t-0 lg:border-l border-stone-700 flex flex-col"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: isTerminalOpen ? 1 : 0 }}
+                    transition={{ delay: 0.5, duration: 0.3 }}
+                >
                     <header className="bg-stone-800 border-b border-stone-700 flex items-center justify-between p-3 h-14 shrink-0">
                         <h2 className="text-base font-semibold text-stone-100 text-shadow-sm">Candidates</h2>
                         <div className="flex items-center text-stone-300 text-sm">
@@ -715,48 +742,68 @@ export default function GroupChat() {
                     </header>
                     <ScrollArea className="flex-grow">
                         <div className="p-2">
-                            <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2 mt-2 border-b border-stone-700">Active</h3>
-                            {participants.filter(user => !user.eliminated).map((user) => (
-                                <div
-                                    key={user.id}
-                                    className={`flex items-center mb-2 p-2 rounded-lg transition-colors duration-200 ${
-                                        user.id === currentTurn ? 'bg-green-600/20' :
-                                            user.id === getNextActiveUserId() ? 'bg-amber-700/20' :
-                                                'hover:bg-green-600/10'
-                                    }`}
-                                >
-                                    <ProfilePicture
-                                        src={user.avatar}
-                                        alt={user.name}
-                                        className="w-6 h-6 mr-2"
-                                    />
-                                    <span className="text-stone-300 text-sm flex-grow">{user.name}</span>
-                                    {user.id === currentTurn && <Mic className="w-4 h-4 text-green-400" />}
-                                    {user.id === getNextActiveUserId() && <Clock className="w-4 h-4 text-amber-400" />}
-                                </div>
-                            ))}
+                            <h3 className="text-xs text-stone-400 uppercase tracking-wider mb-2 mt-2 border-b border-stone-700">Active</h3>
+                            {participants
+                                .filter(user => !user.eliminated)
+                                .sort((a, b) => {
+                                    if (a.isAdmin) return -1;
+                                    if (b.isAdmin) return 1;
+                                    return a.name.localeCompare(b.name);
+                                })
+                                .map((user) => (
+                                    <div
+                                        key={user.id}
+                                        className={`flex text-xs items-center mb-2 p-2 rounded-lg transition-colors duration-200 ${
+                                            user.id === currentTurn ? 'bg-green-600/20' :
+                                                user.id === getNextActiveUserId() ? 'bg-amber-700/20' :
+                                                    'hover:bg-stone-300/10'
+                                        }`}
+                                    >
+                                        <ProfilePicture
+                                            src={user.avatar}
+                                            alt={user.name}
+                                            className="w-6 h-6 mr-2"
+                                        />
+                                        <span className="text-stone-300 text-sm flex-grow flex items-center">
+                                            {user.name}
+                                            {user.isAdmin && <ShieldHalf className="w-4 h-4 ml-1 text-stone-300" />}
+                                        </span>
+                                        {user.id === currentTurn && <Mic className="w-5 h-5 text-green-400" />}
+                                        {user.id === getNextActiveUserId() && <Clock className="w-5 h-5 text-amber-400" />}
+                                    </div>
+                                ))}
                             {participants.some(user => user.eliminated) && (
                                 <>
-                                    <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2 mt-8 border-b border-stone-700">Terminated</h3>
-                                    {participants.filter(user => user.eliminated).map((user) => (
-                                        <div
-                                            key={user.id}
-                                            className="flex items-center mb-2 p-2 rounded-lg"
-                                        >
-                                            <ProfilePicture
-                                                src={user.avatar}
-                                                alt={user.name}
-                                                className="w-6 h-6 mr-2 grayscale"
-                                            />
-                                            <span className="text-stone-300 text-sm flex-grow">{user.name}</span>
-                                        </div>
-                                    ))}
+                                    <h3 className="text-xs text-stone-400 uppercase tracking-wider mb-2 mt-8 border-b border-stone-700">Terminated</h3>
+                                    {participants
+                                        .filter(user => user.eliminated)
+                                        .sort((a, b) => {
+                                            if (a.isAdmin) return -1;
+                                            if (b.isAdmin) return 1;
+                                            return a.name.localeCompare(b.name);
+                                        })
+                                        .map((user) => (
+                                            <div
+                                                key={user.id}
+                                                className="flex items-center mb-2 p-2 rounded-lg"
+                                            >
+                                                <ProfilePicture
+                                                    src={user.avatar}
+                                                    alt={user.name}
+                                                    className="w-6 h-6 mr-2 grayscale"
+                                                />
+                                                <span className="text-xs text-stone-300 sflex-grow flex items-center">
+                                                    {user.name}
+                                                    {user.isAdmin && <ShieldHalf className="w-4 h-4 ml-1 text-stone-300" />}
+                                                </span>
+                                            </div>
+                                        ))}
                                 </>
                             )}
                         </div>
                     </ScrollArea>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
         </div>
     )
 }
