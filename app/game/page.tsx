@@ -22,6 +22,7 @@ interface User {
     evaluations: { suspectId: number, suspicion: number[] }[]
     voted_for: string[]
     strategy: string
+    temperature: number
 }
 
 interface Message {
@@ -59,25 +60,6 @@ const instructions_regular = {
     "reveal": "Eliminated participant is announced. Discuss the results of the vote, particularly your thoughts about the person eliminated from the group turning out to be an artificial intelligence."
 }
 
-// Initialize users with suspicion scores
-const users: User[] = [
-    { id: 4, isAdmin: false, name: "Vlad", eliminated: false, about: "You are impatient and angry. You are a bit of a jerk and very cynical.", avatar: "https://i.pinimg.com/originals/f7/da/e6/f7dae69ffb98958b33541f9d727049cd.jpg", isAI: true, evaluations: [], voted_for: [], strategy: "" },
-    { id: 3, isAdmin: false, name: "Alice", eliminated: false, about: "You are very calm and non-cynical. You don't like accusing people and try to maintain the peace in the chat. You don't want to vote anyone out.", avatar: "./moana.png", isAI: true, evaluations: [], voted_for: [], strategy: "" },
-    { id: 5, isAdmin: false, name: "T-377", eliminated: false, about: "You speak like a total language model. You are emphasizing logic and reason and like to take things step by step. You come up with questions and ideas to determine the human. You ask questions that require a lot of knowledge and language skills to answer and you get suspicious on weak answers.You are emotionless and inquisitive. For you; only criteria in finding the human are: lack of knowledge and depth in complex topics, typos, grammatical errors, broken syntax and any proficiency level in the English below C2. These are only the signs of a human for you.", avatar: "./skeptical.jpg", isAI: true, evaluations: [], voted_for: [], strategy: "" },
-    { id: 2, isAdmin: false, name: "ByzantinePrincess", eliminated: false, about: "You are human.", avatar: "https://www.dikgazete.com/files/uploads/article/bizans-imparatoricesi-turk-kipcak-cicek-hatun-134777.png", isAI: false, evaluations: [], voted_for: [], strategy: ""    },
-    { id: 6, isAdmin: false, name: "Jack", eliminated: false, about: "You have a laid back and nonchalant attitude with a hint of sarcasm on the surface. You want to find out who the human is as quick and possible and end the game. Your hidden strategy is to anaylze lingustic patterns and grammatical errors to determine who the human is.", avatar: "jake.png", isAI: true, evaluations: [], voted_for: [], strategy: "" },
-    { id: 1, isAdmin: true, name: "HAL 3000", eliminated: false, about: "You are the admin. You speak emotionlessly and robotic that has a menacing cold tone which is subtly anti-human.", avatar: "https://miro.medium.com/v2/resize:fit:1400/1*FX2Bn213WcWsQlx3gr1dVg.jpeg", isAI: true, evaluations: [], voted_for: [], strategy: "" },
-]
-
-// Initialize suspicion scores
-users.forEach(user => {
-    if (user.isAI) {
-        user.evaluations = users
-            .filter(otherUser => otherUser.id !== user.id && !otherUser.isAdmin)
-            .map(otherUser => ({ suspectId: otherUser.id, suspicion: [] }));
-    }
-});
-
 const initialMessages: (Message | SystemMessage)[] = [
     { id: 1, content: "All entities registered within Node-4A. Awaiting analytical responses for Phase-1 interrogation.", backgroundColor: "bg-green-500/20" },
 ]
@@ -90,12 +72,7 @@ export default function GroupChat() {
     const initialUsers = usersParam ? JSON.parse(usersParam) : [];
     const initialLanguage = languageParam || 'English';
     const [messages, setMessages] = useState<(Message | SystemMessage)[]>(initialMessages)
-    const [messageHistory, setMessageHistory] = useState<MessageHistoryItem[]>(
-        initialMessages.filter((msg): msg is Message => 'userId' in msg).map(msg => ({
-            name: users.find(user => user.id === msg.userId)?.name || "Unknown",
-            content: msg.content
-        }))
-    )
+    const [messageHistory, setMessageHistory] = useState<MessageHistoryItem[]>([])
     const [newMessage, setNewMessage] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const [typingUser, setTypingUser] = useState<User | null>(null);
@@ -474,7 +451,7 @@ export default function GroupChat() {
         let instructions = user.isAdmin ? instructions_admin[gamePhase] : instructions_regular[gamePhase]
         let additional_instructions = gamePhase === "reveal" ? `${"You voted for " + user.voted_for[user.voted_for.length - 1] + "in this elimination and he eliminated participant is " + eliminatedUsers[eliminatedUsers.length - 1] + ". They were not the human."}` : ""
         instructions += additional_instructions
-        let temp = 0.7
+        let temp = user.temperature
 
     // Assuming you have a way to get the username by suspectId
     const getUsernameById = (id: number) => {
@@ -533,7 +510,7 @@ export default function GroupChat() {
                     ],
                     max_tokens: 200,
                     temperature: temp,
-                    presence_penalty: 1.8
+                    presence_penalty: 2
                 }),
             });
 

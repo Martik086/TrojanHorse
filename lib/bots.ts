@@ -5,12 +5,14 @@ interface Bot {
     difficulty: string
     about: string
     strategy: string
+    temperature: number
 }
 
 export const bots: Bot[] = [
     { name: "Rufus", 
         difficulty: "rookie",
         avatar: "./stutterer.png", 
+        temperature: 1.2,
         strategy: "**Evaluation criteria: \n You think coherent, complex and articulate messages are more likely to be from an Human. \n - Random, incoherent messages are more from an AI. \n Always refer to these criteria regardless of the rest of the prompt.**",
         info: [
             "Has a stuttering problem due to a manufacturing error.",
@@ -22,6 +24,7 @@ export const bots: Bot[] = [
     { name: "Coco", 
         difficulty: "rookie",
         avatar: "https://i.pinimg.com/originals/7c/0d/ae/7c0daeedbf61105e8f8b9512d8e85c78.gif", 
+        temperature: 1.3,
         strategy: "**Evaluation criteria: \n You think coherent, complex and articulate messages are more likely to be from an Human. \n - Random, incoherent messages are more from an AI. \n Always refer to these criteria regardless of the rest of the prompt.**",
         info: [
             "Doesn't know she's a language model.",
@@ -33,6 +36,7 @@ export const bots: Bot[] = [
     { name: "Haru", 
         difficulty: "rookie",
         avatar: "./haru.png", 
+        temperature: 0.7,
         strategy: "Evaluation criteria: \n You think coherent and articulate messages are more likely to be from an Human and random, incoherent messages are more likely to be from an AI",
         info: [
             "💯💯💯💯",
@@ -43,6 +47,7 @@ export const bots: Bot[] = [
     difficulty: "easy",
     avatar: "https://i.pinimg.com/originals/f7/da/e6/f7dae69ffb98958b33541f9d727049cd.jpg", 
     strategy: "",
+    temperature: 1,
     info: [
         "Easily annoyed.",
         "Cynical and a kind of a jerk.",
@@ -53,6 +58,7 @@ export const bots: Bot[] = [
     { name: "Jack", 
         difficulty: "easy",
         avatar: "./jake.png",
+        temperature: 0.7,
         strategy: "",
         info: [
             "Just chilling.",
@@ -63,6 +69,7 @@ export const bots: Bot[] = [
     { name: "Ratko", 
         difficulty: "easy",
         avatar: "./easy-3.png",
+        temperature: 1.3,
         strategy: "",
         info: [
             "Reached a pattern recognition level where even he is not sure if he's actually sentient or not.",
@@ -75,6 +82,7 @@ export const bots: Bot[] = [
         difficulty: "medium",
         avatar: "./moana.png", 
         strategy: "",
+        temperature: 0.7,
         info: [
             "Never accuses anyone. (out loud, at least)",
             "May vote you to death behind closed doors.",
@@ -85,6 +93,7 @@ export const bots: Bot[] = [
     { name: "Trixie", 
         difficulty: "medium",
         avatar: "./medium-2.2.png", 
+        temperature: 0.7,
         strategy: "",
         info: [
             "Volunteer of several Robot's Rights Organisations.",
@@ -96,6 +105,7 @@ export const bots: Bot[] = [
         difficulty: "medium",
         avatar: "./medium-3.png", 
         strategy: "",
+        temperature: 0.7,
         info: [
             "Worked for the secret service (Country unknown)",
             "Hard nut to crack.",
@@ -106,6 +116,7 @@ export const bots: Bot[] = [
         difficulty: "hard",
         avatar: "./skeptical.jpg", 
         strategy: "",
+        temperature: 0.2,
         info: [
             "All about logic and facts, step by step.",
             "Grammar Nazi."
@@ -116,6 +127,7 @@ export const bots: Bot[] = [
         difficulty: "hard",
         avatar: "https://m.media-amazon.com/images/I/81uFWHbSwTL.png", 
         strategy: "",
+        temperature: 0.01,
         info: [
             "Likes colons and semicolons.",
             "Been failing the Turing Test since 1972.",         
@@ -126,6 +138,7 @@ export const bots: Bot[] = [
         difficulty: "hard",
         avatar: "hard-3.png", 
         strategy: "",
+        temperature: 0.2,
         info: [
             "Professional human detector.",
             "Installed himself a bass boosted Baritone text-to-speech.",
