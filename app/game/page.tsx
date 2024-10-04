@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea" // Make sure to import the Textarea component
 import { Button } from "@/components/ui/button"
-import { SendIcon, Users, Mic, Clock, ArrowRightIcon, Ticket, ShieldHalf } from "lucide-react"
+import { SendIcon, Users, Mic, Clock, ArrowRightIcon, Ticket, ShieldHalf, ChevronUp, ChevronDown } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ProfilePicture } from "../components/profile-picture"
 import VotingScreen from "../components/voting-screen" // Import VotingScreen
@@ -64,6 +64,10 @@ const initialMessages: (Message | SystemMessage)[] = [
     { id: 1, content: "All entities registered within Node-4A. Awaiting analytical responses for Phase-1 interrogation.", backgroundColor: "bg-green-500/20" },
 ]
 
+const truncateNewlines = (content: string) => {
+  return content.replace(/\n{2,}/g, '\n');
+};
+
 export default function GroupChat() {
     const searchParams = useSearchParams();
     const usersParam = searchParams.get('users');
@@ -95,6 +99,21 @@ export default function GroupChat() {
     const [eliminatedUsers, setEliminatedUsers] = useState<string[]>([]);
     const [isGameOver, setIsGameOver] = useState(false);
     const [isTerminalOpen, setIsTerminalOpen] = useState(false)
+    const [isCandidatesSectionVisible, setIsCandidatesSectionVisible] = useState(false)
+
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const adjustTextareaHeight = () => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`; // 96px is 6rem (3 lines)
+        }
+    };
+
+    useEffect(() => {
+        adjustTextareaHeight();
+    }, [newMessage]);
 
     useEffect(() => {
         // Trigger the animation after a short delay
@@ -324,8 +343,8 @@ export default function GroupChat() {
         setCurrentTurn(nextTurn);
     };
 
-    const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setNewMessage(e.target.value)
+    const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setNewMessage(e.target.value);
         if (currentTurn === humanUserID && !isTurnInProgress) {
             setIsTyping(true)
             setTypingUser(participants.find(user => user.id === humanUserID) || null)
@@ -560,6 +579,164 @@ export default function GroupChat() {
         return nextTurn;
     };
 
+    const toggleCandidatesSection = () => {
+        setIsCandidatesSectionVisible(!isCandidatesSectionVisible)
+    }
+
+    const DesktopCandidates = () => (
+        <div className="hidden md:flex w-1/5 bg-stone-800 border-l border-stone-700 flex-col">
+            <header className="bg-stone-800 border-b border-stone-700 flex items-center justify-between p-3 h-14 shrink-0">
+                <h2 className="text-base font-semibold text-stone-100 text-shadow-sm">Candidates</h2>
+                <div className="flex items-center text-stone-300 text-sm">
+                    <Users className="w-4 h-4 mr-1" />
+                    <span>{participants.filter(user => !user.eliminated).length}</span>
+                </div>
+            </header>
+            <ScrollArea className="flex-grow">
+                <div className="p-2">
+                    <h3 className="text-xs text-stone-400 uppercase tracking-wider mb-2 mt-2 border-b border-stone-700">Active</h3>
+                    {participants
+                        .filter(user => !user.eliminated)
+                        .sort((a, b) => {
+                            if (a.isAdmin) return -1;
+                            if (b.isAdmin) return 1;
+                            return a.name.localeCompare(b.name);
+                        })
+                        .map((user) => (
+                            <div
+                                key={user.id}
+                                className={`flex text-xs items-center mb-2 p-2 rounded-lg transition-colors duration-200 ${
+                                    user.id === currentTurn ? 'bg-green-600/20' :
+                                        user.id === getNextActiveUserId() ? 'bg-amber-700/20' :
+                                            'hover:bg-stone-300/10'
+                                }`}
+                            >
+                                <ProfilePicture
+                                    src={user.avatar}
+                                    alt={user.name}
+                                    className="w-6 h-6 mr-2"
+                                />
+                                <span className="text-stone-300 text-sm flex-grow flex items-center">
+                                    {user.name}
+                                    {user.isAdmin && <ShieldHalf className="w-4 h-4 ml-1 text-stone-300" />}
+                                </span>
+                                {user.id === currentTurn && <Mic className="w-5 h-5 text-green-400" />}
+                                {user.id === getNextActiveUserId() && <Clock className="w-5 h-5 text-amber-400" />}
+                            </div>
+                        ))}
+                    {participants.some(user => user.eliminated) && (
+                        <>
+                            <h3 className="text-xs text-stone-400 uppercase tracking-wider mb-2 mt-8 border-b border-stone-700">Terminated</h3>
+                            {participants
+                                .filter(user => user.eliminated)
+                                .sort((a, b) => {
+                                    if (a.isAdmin) return -1;
+                                    if (b.isAdmin) return 1;
+                                    return a.name.localeCompare(b.name);
+                                })
+                                .map((user) => (
+                                    <div
+                                        key={user.id}
+                                        className="flex items-center mb-2 p-2 rounded-lg"
+                                    >
+                                        <ProfilePicture
+                                            src={user.avatar}
+                                            alt={user.name}
+                                            className="w-6 h-6 mr-2 grayscale"
+                                        />
+                                        <span className="text-xs text-stone-300 sflex-grow flex items-center">
+                                            {user.name}
+                                            {user.isAdmin && <ShieldHalf className="w-4 h-4 ml-1 text-stone-300" />}
+                                        </span>
+                                    </div>
+                                ))}
+                        </>
+                    )}
+                </div>
+            </ScrollArea>
+        </div>
+    );
+
+    const MobileCandidates = () => (
+        <motion.div 
+            className="md:hidden absolute inset-0 bg-stone-800 flex flex-col"
+            initial={{ opacity: 0, y: "100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ duration: 0.3 }}
+        >
+            <header className="bg-stone-800 border-b border-stone-700 flex items-center justify-between p-3 h-14 shrink-0">
+                <h2 className="text-lg font-semibold text-stone-100 text-shadow-sm">Candidates</h2>
+                <div className="flex items-center text-stone-300 text-sm">
+                    <Users className="w-5 h-5 mr-1.5" />
+                    <span>{participants.filter(user => !user.eliminated).length}</span>
+                </div>
+            </header>
+            <ScrollArea className="flex-grow">
+                <div className="p-3">
+                    <h3 className="text-xs text-stone-400 uppercase tracking-wider mb-2 mt-2 border-b border-stone-700">Active</h3>
+                    {participants
+                        .filter(user => !user.eliminated)
+                        .sort((a, b) => {
+                            if (a.isAdmin) return -1;
+                            if (b.isAdmin) return 1;
+                            return a.name.localeCompare(b.name);
+                        })
+                        .map((user) => (
+                            <div
+                                key={user.id}
+                                className={`flex items-center mb-3 p-2 rounded-lg transition-colors duration-200 ${
+                                    user.id === currentTurn ? 'bg-green-600/20' :
+                                        user.id === getNextActiveUserId() ? 'bg-amber-700/20' :
+                                            'hover:bg-stone-300/10'
+                                }`}
+                            >
+                                <ProfilePicture
+                                    src={user.avatar}
+                                    alt={user.name}
+                                    className="w-8 h-8 mr-2"
+                                />
+                                <span className="text-stone-300 text-base flex-grow flex items-center">
+                                    {user.name}
+                                    {user.isAdmin && <ShieldHalf className="w-4 h-4 ml-1.5 text-stone-300" />}
+                                </span>
+                                {user.id === currentTurn && <Mic className="w-5 h-5 text-green-400" />}
+                                {user.id === getNextActiveUserId() && <Clock className="w-5 h-5 text-amber-400" />}
+                            </div>
+                        ))}
+                    {participants.some(user => user.eliminated) && (
+                        <>
+                            <h3 className="text-xs text-stone-400 uppercase tracking-wider mb-2 mt-6 border-b border-stone-700">Terminated</h3>
+                            {participants
+                                .filter(user => user.eliminated)
+                                .sort((a, b) => {
+                                    if (a.isAdmin) return -1;
+                                    if (b.isAdmin) return 1;
+                                    return a.name.localeCompare(b.name);
+                                })
+                                .map((user) => (
+                                    <div
+                                        key={user.id}
+                                        className="flex items-center mb-3 p-2 rounded-lg"
+                                    >
+                                        <ProfilePicture
+                                            src={user.avatar}
+                                            alt={user.name}
+                                            className="w-8 h-8 mr-2 grayscale"
+                                        />
+                                        <span className="text-stone-300 text-base flex-grow flex items-center">
+                                            {user.name}
+                                            {user.isAdmin && <ShieldHalf className="w-4 h-4 ml-1.5 text-stone-300" />}
+                                        </span>
+                                    </div>
+                                ))}
+                        </>
+                    )}
+                </div>
+            </ScrollArea>
+        </motion.div>
+    );
+
     return (
         <div className="flex justify-center items-center min-h-screen bg-stone-950 p-2">
             {/* Conditionally render the VotingScreen */}
@@ -574,12 +751,12 @@ export default function GroupChat() {
                 </div>
             )}
             <motion.div 
-                className={`w-full h-[90vh] max-w-5xl bg-stone-900 rounded-lg shadow-lg overflow-hidden border border-stone-800 flex flex-col lg:flex-row ${isVotingScreenVisible ? 'blur-sm' : ''}`}
+                className={`w-full h-[90vh] max-w-5xl bg-stone-900 rounded-lg shadow-lg overflow-hidden border border-stone-800 flex flex-row relative ${isVotingScreenVisible ? 'blur-sm' : ''}`}
                 initial={{ height: 0 }}
                 animate={{ height: isTerminalOpen ? "90vh" : 0 }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}
             >
-                <div className="flex-grow flex flex-col h-full lg:w-4/5">
+                <div className="flex-grow flex flex-col h-full md:w-4/5">
                     <header className="bg-stone-800 border-b border-stone-700 flex items-center justify-between h-14 shrink-0">
                         <h1 className="text-xl font-bold text-stone-100 text-shadow p-3 font-mono">Terminal</h1>
                         <div className="rounded-md bg-sky-800/20 text-sky-400 font-bold p-2 mr-8 font-mono tracking-wider flex items-center">
@@ -633,11 +810,15 @@ export default function GroupChat() {
                                   )}
                                   <span className="text-xs text-stone-500">{message.timestamp}</span>
                                 </div>
-                                <p className={`text-sm ${user?.isAdmin ? 'text-sky-300 font-mono' : 'text-stone-300'}`}>{message.content}</p>
+                                <p className={`text-sm ${user?.isAdmin ? 'text-sky-300 font-mono' : 'text-stone-300'} whitespace-pre-wrap`}>
+                                  {truncateNewlines(message.content)}
+                                </p>
                               </div>
                             </>
                           ) : (
-                            <p className="text-stone-300 text-sm italic w-full">{message.content}</p>
+                            <p className="text-stone-300 text-sm italic w-full whitespace-pre-wrap">
+                              {truncateNewlines(message.content)}
+                            </p>
                           )}
                         </motion.div>
                       )
@@ -673,15 +854,20 @@ export default function GroupChat() {
                     </div>
                     <footer className="p-2 bg-stone-800 border-t border-stone-700 shrink-0">
                         <form onSubmit={handleSendMessage} className="flex items-center">
-                            <Input
-                                type="text"
+                            <Textarea
+                                ref={textareaRef}
                                 value={newMessage}
                                 onChange={handleTyping}
                                 placeholder={currentTurn === humanUserID ? "Type a message..." : "Wait for your turn..."}
                                 disabled={currentTurn !== humanUserID}
-                                className={`flex-grow mr-2 bg-stone-700 border-stone-600 text-stone-100 placeholder-stone-400 focus:ring-amber-500 focus:border-amber-500 text-sm ${
+                                className={`flex-grow mr-2 bg-stone-700 border-stone-600 text-stone-100 placeholder-stone-400 focus:ring-amber-500 focus:border-amber-500 text-sm rounded-md resize-none overflow-auto ${
                                     currentTurn !== humanUserID ? 'opacity-50 cursor-not-allowed' : ''
                                 }`}
+                                style={{ 
+                                    minHeight: '2.5rem',
+                                    maxHeight: '6rem',
+                                }}
+                                rows={1}
                             />
                             <Button
                                 type={currentTurn === humanUserID ? "submit" : "button"}
@@ -704,83 +890,19 @@ export default function GroupChat() {
                         </form>
                     </footer>
                 </div>
-                <motion.div 
-                    className="w-full lg:w-1/5 bg-stone-800 border-t lg:border-t-0 lg:border-l border-stone-700 flex flex-col"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: isTerminalOpen ? 1 : 0 }}
-                    transition={{ delay: 0.5, duration: 0.3 }}
-                >
-                    <header className="bg-stone-800 border-b border-stone-700 flex items-center justify-between p-3 h-14 shrink-0">
-                        <h2 className="text-base font-semibold text-stone-100 text-shadow-sm">Candidates</h2>
-                        <div className="flex items-center text-stone-300 text-sm">
-                            <Users className="w-4 h-4 mr-1" />
-                            <span>{participants.filter(user => !user.eliminated).length}</span>
-                        </div>
-                    </header>
-                    <ScrollArea className="flex-grow">
-                        <div className="p-2">
-                            <h3 className="text-xs text-stone-400 uppercase tracking-wider mb-2 mt-2 border-b border-stone-700">Active</h3>
-                            {participants
-                                .filter(user => !user.eliminated)
-                                .sort((a, b) => {
-                                    if (a.isAdmin) return -1;
-                                    if (b.isAdmin) return 1;
-                                    return a.name.localeCompare(b.name);
-                                })
-                                .map((user) => (
-                                    <div
-                                        key={user.id}
-                                        className={`flex text-xs items-center mb-2 p-2 rounded-lg transition-colors duration-200 ${
-                                            user.id === currentTurn ? 'bg-green-600/20' :
-                                                user.id === getNextActiveUserId() ? 'bg-amber-700/20' :
-                                                    'hover:bg-stone-300/10'
-                                        }`}
-                                    >
-                                        <ProfilePicture
-                                            src={user.avatar}
-                                            alt={user.name}
-                                            className="w-6 h-6 mr-2"
-                                        />
-                                        <span className="text-stone-300 text-sm flex-grow flex items-center">
-                                            {user.name}
-                                            {user.isAdmin && <ShieldHalf className="w-4 h-4 ml-1 text-stone-300" />}
-                                        </span>
-                                        {user.id === currentTurn && <Mic className="w-5 h-5 text-green-400" />}
-                                        {user.id === getNextActiveUserId() && <Clock className="w-5 h-5 text-amber-400" />}
-                                    </div>
-                                ))}
-                            {participants.some(user => user.eliminated) && (
-                                <>
-                                    <h3 className="text-xs text-stone-400 uppercase tracking-wider mb-2 mt-8 border-b border-stone-700">Terminated</h3>
-                                    {participants
-                                        .filter(user => user.eliminated)
-                                        .sort((a, b) => {
-                                            if (a.isAdmin) return -1;
-                                            if (b.isAdmin) return 1;
-                                            return a.name.localeCompare(b.name);
-                                        })
-                                        .map((user) => (
-                                            <div
-                                                key={user.id}
-                                                className="flex items-center mb-2 p-2 rounded-lg"
-                                            >
-                                                <ProfilePicture
-                                                    src={user.avatar}
-                                                    alt={user.name}
-                                                    className="w-6 h-6 mr-2 grayscale"
-                                                />
-                                                <span className="text-xs text-stone-300 sflex-grow flex items-center">
-                                                    {user.name}
-                                                    {user.isAdmin && <ShieldHalf className="w-4 h-4 ml-1 text-stone-300" />}
-                                                </span>
-                                            </div>
-                                        ))}
-                                </>
-                            )}
-                        </div>
-                    </ScrollArea>
-                </motion.div>
+                <DesktopCandidates />
+                <AnimatePresence>
+                    {isCandidatesSectionVisible && <MobileCandidates />}
+                </AnimatePresence>
             </motion.div>
+            <div className="md:hidden fixed bottom-4 right-4 z-10">
+                <Button
+                    onClick={toggleCandidatesSection}
+                    className="bg-stone-800 hover:bg-stone-700 text-stone-100"
+                >
+                    {isCandidatesSectionVisible ? <ChevronDown className="h-6 w-6" /> : <ChevronUp className="h-6 w-6" />}
+                </Button>
+            </div>
         </div>
     )
 }
