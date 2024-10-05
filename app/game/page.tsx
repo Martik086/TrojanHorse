@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea" // Make sure to import the Textarea component
 import { Button } from "@/components/ui/button"
-import { SendIcon, Users, Mic, Clock, ArrowRightIcon, Ticket, ShieldHalf, ChevronUp, ChevronDown } from "lucide-react"
+import { SendIcon, Users, Mic, Clock, ArrowRightIcon, Ticket, ShieldHalf, ChevronUp, ChevronDown, ArrowRightCircle } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ProfilePicture } from "../components/profile-picture"
 import VotingScreen from "../components/voting-screen" // Import VotingScreen
@@ -772,58 +772,76 @@ export default function GroupChat() {
                     >
                         <ScrollArea className="h-full">
                             <div className="p-2">
-                            <AnimatePresence initial={false}>
-                    {messages.map((message, index) => {
-                      const user = 'userId' in message
-                        ? participants.find(u => u.id === message.userId)
-                        : undefined;
-                      const isLastMessage = index === messages.length - 1;
-                      return (
-                        <motion.div
-                          key={message.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className={`mb-3 rounded-lg p-2 transition-colors duration-200 ${
-                            'userId' in message 
-                              ? `flex items-start ${user?.isAdmin ? 'bg-sky-700/30 hover:bg-sky-700/40' : 'hover:bg-stone-800/70'}` 
-                              : 'text-center hover:bg-stone-800/50'
-                          }`}
-                          style={{ backgroundColor: 'backgroundColor' in message ? message.backgroundColor : undefined }}
-                          ref={isLastMessage ? lastMessageRef : null} // Set ref to the last message
-                        >
-                          {'userId' in message ? (
-                            <>
-                              <ProfilePicture
-                                src={user?.avatar || ''}
-                                alt={user?.name || ''}
-                                className="w-10 h-10 mr-3"
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-center mb-0.5" >
-                                  <span className={`font-semibold mr-2 ${user?.isAdmin ? 'text-sky-300 font-mono' : 'text-stone-200'} text-shadow-sm`}>
-                                    {user?.name}
-                                  </span>
-                                  {user?.isAdmin && (
-                                    <ShieldHalf className="w-4 h-4 text-sky-400 mr-2" />
-                                  )}
-                                  <span className="text-xs text-stone-500">{message.timestamp}</span>
-                                </div>
-                                <p className={`text-sm ${user?.isAdmin ? 'text-sky-300 font-mono' : 'text-stone-300'} whitespace-pre-wrap`}>
-                                  {truncateNewlines(message.content)}
-                                </p>
-                              </div>
-                            </>
-                          ) : (
-                            <p className="text-stone-300 text-sm italic w-full whitespace-pre-wrap">
-                              {truncateNewlines(message.content)}
-                            </p>
-                          )}
-                        </motion.div>
-                      )
-                    })}
-                  </AnimatePresence>
+                                <AnimatePresence initial={false}>
+                                    {messages.map((message, index) => {
+                                        const user = 'userId' in message
+                                            ? participants.find(u => u.id === message.userId)
+                                            : undefined;
+                                        const isLastMessage = index === messages.length - 1;
+                                        return (
+                                            <motion.div
+                                                key={message.id}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0 }}
+                                                transition={{ duration: 0.3 }}
+                                                className={`mb-3 rounded-lg p-2 transition-colors duration-200 ${
+                                                    'userId' in message 
+                                                        ? `flex items-start ${user?.isAdmin ? 'bg-sky-700/30 hover:bg-sky-700/40' : 'hover:bg-stone-800/70'}` 
+                                                        : 'text-center hover:bg-stone-800/50'
+                                                }`}
+                                                style={{ backgroundColor: 'backgroundColor' in message ? message.backgroundColor : undefined }}
+                                                ref={isLastMessage ? lastMessageRef : null} // Set ref to the last message
+                                            >
+                                                {'userId' in message ? (
+                                                    <>
+                                                        <ProfilePicture
+                                                            src={user?.avatar || ''}
+                                                            alt={user?.name || ''}
+                                                            className="w-10 h-10 mr-3"
+                                                        />
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center mb-0.5" >
+                                                                <span className={`font-semibold mr-2 ${user?.isAdmin ? 'text-sky-300 font-mono' : 'text-stone-200'} text-shadow-sm`}>
+                                                                    {user?.name}
+                                                                </span>
+                                                                {user?.isAdmin && (
+                                                                    <ShieldHalf className="w-4 h-4 text-sky-400 mr-2" />
+                                                                )}
+                                                                <span className="text-xs text-stone-500">{message.timestamp}</span>
+                                                            </div>
+                                                            <p className={`text-sm ${user?.isAdmin ? 'text-sky-300 font-mono' : 'text-stone-300'} whitespace-pre-wrap`}>
+                                                                {truncateNewlines(message.content)}
+                                                            </p>
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <p className="text-stone-300 text-sm italic w-full whitespace-pre-wrap">
+                                                        {truncateNewlines(message.content)}
+                                                    </p>
+                                                )}
+                                            </motion.div>
+                                        )
+                                    })}
+                                </AnimatePresence>
+                                {currentTurn !== humanUserID && canProceedToNextTurn && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.3 }}
+                                        className="flex justify-center mt-4"
+                                    >
+                                        <Button
+                                            onClick={handleNextTurn}
+                                            size="sm"
+                                            className="bg-green-600 hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-stone-800"
+                                        >
+                                            <ArrowRightCircle className="h-4 w-4 mr-2" />
+                                            Next Turn
+                                        </Button>
+                                    </motion.div>
+                                )}
                             </div>
                         </ScrollArea>
                     </motion.div>
@@ -845,7 +863,7 @@ export default function GroupChat() {
                                             exit={{ opacity: 0 }}
                                             transition={{ repeat: Infinity, duration: 1 }}
                                         >
-                                          ...
+                                            ...
                                         </motion.span>
                                     </span>
                                 </motion.div>
@@ -870,22 +888,13 @@ export default function GroupChat() {
                                 rows={1}
                             />
                             <Button
-                                type={currentTurn === humanUserID ? "submit" : "button"}
+                                type="submit"
                                 size="sm"
-                                onClick={currentTurn !== humanUserID ? handleNextTurn : handleSendMessage}
-                                className={`${
-                                    currentTurn === humanUserID
-                                        ? 'bg-stone-700 hover:bg-amber-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-stone-800'
-                                        : 'bg-green-600 hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-stone-800'
-                                }`}
-                                disabled={currentTurn !== humanUserID && !canProceedToNextTurn}
+                                className="bg-stone-700 hover:bg-amber-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-stone-800"
+                                disabled={currentTurn !== humanUserID}
                             >
-                                {currentTurn === humanUserID ? (
-                                    <SendIcon className="h-4 w-4" />
-                                ) : (
-                                    <ArrowRightIcon className="h-4 w-4" />
-                                )}
-                                <span className="sr-only">{currentTurn === humanUserID ? "Send message" : "Next turn"}</span>
+                                <SendIcon className="h-4 w-4" />
+                                <span className="sr-only">Send message</span>
                             </Button>
                         </form>
                     </footer>

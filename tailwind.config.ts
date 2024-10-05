@@ -11,6 +11,7 @@ const config: Config = {
   	extend: {
 		fontFamily: {
 			sans: ['Inter', "serif"],
+			soft: ['var(--font-soft)', "sans-serif"]
 		   },
 		   fontSize: {
 			'xs': '0.825rem',

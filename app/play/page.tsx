@@ -235,8 +235,8 @@ export default function Component() {
               </div>
               <div className="flex justify-center">
                 <Button
-                    className="w-1/2 bg-sky-600 hover:bg-sky-500 text-white py-2 px-4 rounded-full shadow-md hover:shadow-lg transition-all uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed text-lg"
-                    disabled={selectedBots.length === 0 || selectedBots.length > 6 || !nickname || !!nicknameError}
+                    className="font-soft font-bold text-sm font-weight:900; w-1/2 bg-sky-600 hover:bg-sky-500 text-white py-2 px-4 rounded-full shadow-md hover:shadow-lg transition-all uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+                    disabled={selectedBots.length < 2 || selectedBots.length > 6 || !nickname || !!nicknameError}
                     onClick={handleStartGame}
                 >
                   Start
@@ -279,7 +279,7 @@ export default function Component() {
                 </div>
               ) : (
                 <p className="text-stone-400 text-base">
-                  Hover over a bot to see more information about them. Select up to 8 bots to join your game.
+                  Hover over a bot to see more information about them. Select up to 6 bots to join your game.
                 </p>
               )}
             </div>
