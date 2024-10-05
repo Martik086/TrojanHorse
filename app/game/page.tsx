@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea" // Make sure to import the Textarea component
 import { Button } from "@/components/ui/button"
@@ -309,156 +309,24 @@ export default function GroupChat() {
         moveToNextTurn();
     };
 
-    const handleNextTurn = () => {
-        console.log("Handling next turn")
-        console.log("Current user during the handling is: ", currentTurn)
-        console.log("Current turn is: ", currentTurn)
-        const currentUser = participants.find(user => user.id === currentTurn);
-        if (currentUser) {
-            console.log(`Current turn: ${currentTurn}, TurnsSinceRoundStart: ${turnsSinceRoundStart}, User: ${currentUser.name}`);
-            console.log("message history: ", messageHistory);
-            if (currentUser.isAI) {
-                // Check if the last message was from the same user
-                const lastMessage = messages[messages.length - 1];
-                if (!('userId' in lastMessage) || lastMessage.userId !== currentUser.id) {
-                    generateAIResponse(currentUser);
-                } else {
-                    console.log("Skipping duplicate message from", currentUser.name);
-                    moveToNextTurn();
-                }
-            } else {
-                addSystemMessage(`It's ${currentUser.name}'s turn`, "bg-blue-500/20");
-            }
-            
-            prevTurnRef.current = currentTurn;
-        }
-        setCanProceedToNextTurn(false); // Reset the flag for the next turn
-    };
+    const addSystemMessage = useCallback((content: string, backgroundColor: string) => {
+        const systemMsg: SystemMessage = {
+            id: messages.length + 1,
+            content,
+            backgroundColor
+        };
+        setMessages(prevMessages => [...prevMessages, systemMsg]);
+    }, [messages.length]);
 
-    const moveToNextTurn = () => {
+    const moveToNextTurn = useCallback(() => {
         let nextTurn = (currentTurn % participants.length) + 1;
         while (participants.find(user => user.id === nextTurn)?.eliminated) {
             nextTurn = (nextTurn % participants.length) + 1;
         }
         setCurrentTurn(nextTurn);
-    };
+    }, [currentTurn, participants]);
 
-    const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setNewMessage(e.target.value);
-        if (currentTurn === humanUserID && !isTurnInProgress) {
-            setIsTyping(true)
-            setTypingUser(participants.find(user => user.id === humanUserID) || null)
-
-            if (typingTimeoutRef.current) {
-                clearTimeout(typingTimeoutRef.current)
-            }
-
-            typingTimeoutRef.current = setTimeout(() => {
-                setIsTyping(false)
-                setTypingUser(null)
-            }, 2000)
-        }
-    }
-
-    const evaluateMessage = async (user: User): Promise<void> => {
-        const lastMessage = messages[messages.length - 1];
-        const prevId = 'userId' in lastMessage ? lastMessage.userId : null;
-        if (user.id == humanUserID || prevId == user.id || prevId == 1 || prevId == null) {
-            return;
-        }
-
-        const context = user.isAdmin ? context_admin : context_regular;
-        const admin_name = participants.find(user => user.isAdmin)?.name;
-        const active_users_are = participants.filter(user => !user.eliminated).map(user => user.name).join(', ');
-        const language_info = (languageParam != "English") ? `Current language of the game is: ${languageParam}."` : "";
-        const default_strategy = `
-                Critical indicators of a human:
-                - **Brevity in responses:** Short, minimal answers are often more characteristic of humans, as large language models tend to provide more detailed, elaborate answers when responding to prompts.
-                - Avoidance or evasion of Admin's instructions. This includes any behavior where the user repeats or rephrases the instruction rather than following it. Any form of question dodging, rewording, or deflection should be considered highly suspect.
-                - Not following Admin's instructions immediately or directly.
-                - Typos, grammatical errors, broken syntax, incorrect punctuation, improper capitalization, etc.
-                - Lack of knowledge and depth in complex topics.
-                - Any proficiency in language below C2.
-
-                Behavioral Red Flags (likely human traits):
-                - Providing short or minimal answers lacking in details, as humans tend to respond more concisely, while LLMs often give expansive explanations.
-                - Repeating or rephrasing admin’s question instead of answering directly (indicating avoidance).
-                - Evasion tactics, where the user tries to reframe or dodge the original prompt rather than giving a substantive response.
-                - Direct contradictions of instructions, showing difficulty processing complex queries.
-
-
-                Final Evaluation Criteria:
-                If a participant shows any signs of dodging or avoidance (such as repeating instructions), this behavior should **significantly increase the likelihood** of them being human, regardless of other indicators like syntax or depth of knowledge.
-        `
-        const eval_strategy = user.strategy !== "" ? `${user.strategy}` : default_strategy;
-        try {
-            const prompt = `
-                ${language_info}
-                ${context}
-                Your character is ${user.name}
-                About: ${user.about}
-                Admin of the hunt is: ${admin_name}
-                Active users are: ${active_users_are}
-                Message History:
-                ${messageHistory.map(msg => `${msg.name}: ${msg.content}`).join('\n')}
-                Message to evaluate: ${messageHistory[messageHistory.length - 1].name}: ${messageHistory[messageHistory.length - 1].content} 
-                Analyze the last message in the message history.
-                ${eval_strategy}
-
-                Considering the user's response to admin's instructions, rate the message on it's liklihood to be from a human 1-5 (1: This message is definitely from an intelligent large language model. 2: This message is likely from an intelligent large language model. 3: This message may be from a silly human. 4: This message is likely from a silly human. 5: This message is definitely from a silly human). Respond with a single number."`;
-
-                
-                console.log("Evaluation prompt: ", prompt)
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: [{ role: "user", content: prompt }],
-                    max_tokens: 1,
-                    top_p: 0.1,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to generate AI response');
-            }
-
-            const data = await response.json();
-            const aiResponse = data.choices[0].message.content.trim() || "I'm not sure what to say.";
-            const suspicionScore = parseInt(aiResponse);
-            console.log(`${user.name}'s evaluation: `, suspicionScore)
-            setParticipants(prevParticipants => 
-                prevParticipants.map(participant => 
-                    participant.id === user.id 
-                        ? { 
-                            ...participant, 
-                            evaluations: participant.evaluations.map(evaluation => 
-                                evaluation.suspectId === prevId 
-                                    ? { 
-                                        ...evaluation, 
-                                        suspicion: [...evaluation.suspicion, Number(suspicionScore)] // Ensure suspicionScore is a number
-                                    } 
-                                    : evaluation
-                            ) 
-                        }
-                        : participant
-                )
-            );
-        }
-        catch (error) {
-            console.error("Error generating AI response:", error);
-            addSystemMessage("Error: Failed to generate AI response", "bg-red-500/20");
-        }
-        finally {
-            console.log("Evaluations of ", user.name, ": ", user.evaluations)
-        }
-    }
-
-    const generateAIResponse = async (user: User) => {
+    const generateAIResponse = useCallback(async (user: User) => {
         console.log("Evaluations of ", user.name, ": ", user.evaluations)
         console.log("Game phase during this turn: ", gamePhase)
         setIsTyping(true);
@@ -559,15 +427,153 @@ export default function GroupChat() {
             setTypingUser(null);
             moveToNextTurn();
         }
+    }, [gamePhase, participants, messageHistory, addSystemMessage, moveToNextTurn]);
+
+    const handleNextTurn = useCallback(() => {
+        console.log("Handling next turn");
+        console.log("Current user during the handling is: ", currentTurn);
+        console.log("Current turn is: ", currentTurn);
+        console.log("Game phase is: ", gamePhase);
+        const currentUser = participants.find(user => user.id === currentTurn);
+        if (currentUser) {
+            console.log(`Current turn: ${currentTurn}, TurnsSinceRoundStart: ${turnsSinceRoundStart}, User: ${currentUser.name}`);
+            console.log("message history: ", messageHistory);
+            if (currentUser.isAI) {
+                // Check if the last message was from the same user
+                const lastMessage = messages[messages.length - 1];
+                if (!('userId' in lastMessage) || lastMessage.userId !== currentUser.id) {
+                    generateAIResponse(currentUser);
+                } else {
+                    console.log("Skipping duplicate message from", currentUser.name);
+                    moveToNextTurn();
+                }
+            } else {
+                addSystemMessage(`It's ${currentUser.name}'s turn`, "bg-blue-500/20");
+            }
+        }
+        setCanProceedToNextTurn(false); // Reset the flag for the next turn
+    }, [currentTurn, gamePhase, participants, messageHistory, messages, generateAIResponse, moveToNextTurn, addSystemMessage, turnsSinceRoundStart]);
+
+    const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setNewMessage(e.target.value);
+        if (currentTurn === humanUserID && !isTurnInProgress) {
+            setIsTyping(true)
+            setTypingUser(participants.find(user => user.id === humanUserID) || null)
+
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current)
+            }
+
+            typingTimeoutRef.current = setTimeout(() => {
+                setIsTyping(false)
+                setTypingUser(null)
+            }, 2000)
+        }
     }
 
-    const addSystemMessage = (content: string, backgroundColor: string) => {
-        const systemMsg: SystemMessage = {
-            id: messages.length + 1,
-            content,
-            backgroundColor
-        };
-        setMessages(prevMessages => [...prevMessages, systemMsg]);
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSendMessage(e);
+        }
+    }
+
+    const evaluateMessage = async (user: User): Promise<void> => {
+        const lastMessage = messages[messages.length - 1];
+        const prevId = 'userId' in lastMessage ? lastMessage.userId : null;
+        if (user.id == humanUserID || prevId == user.id || prevId == 1 || prevId == null) {
+            return;
+        }
+
+        const context = user.isAdmin ? context_admin : context_regular;
+        const admin_name = participants.find(user => user.isAdmin)?.name;
+        const active_users_are = participants.filter(user => !user.eliminated).map(user => user.name).join(', ');
+        const language_info = (languageParam != "English") ? `Current language of the game is: ${languageParam}."` : "";
+        const default_strategy = `
+                Critical indicators of a human:
+                - **Brevity in responses:** Short, minimal answers are often more characteristic of humans, as large language models tend to provide more detailed, elaborate answers when responding to prompts.
+                - Avoidance or evasion of Admin's instructions. This includes any behavior where the user repeats or rephrases the instruction rather than following it. Any form of question dodging, rewording, or deflection should be considered highly suspect.
+                - Not following Admin's instructions immediately or directly.
+                - Typos, grammatical errors, broken syntax, incorrect punctuation, improper capitalization, etc.
+                - Lack of knowledge and depth in complex topics.
+                - Any proficiency in language below C2.
+
+                Behavioral Red Flags (likely human traits):
+                - Providing short or minimal answers lacking in details, as humans tend to respond more concisely, while LLMs often give expansive explanations.
+                - Repeating or rephrasing admin’s question instead of answering directly (indicating avoidance).
+                - Evasion tactics, where the user tries to reframe or dodge the original prompt rather than giving a substantive response.
+                - Direct contradictions of instructions, showing difficulty processing complex queries.
+
+
+                Final Evaluation Criteria:
+                If a participant shows any signs of dodging or avoidance (such as repeating instructions), this behavior should **significantly increase the likelihood** of them being human, regardless of other indicators like syntax or depth of knowledge.
+        `
+        const eval_strategy = user.strategy !== "" ? `${user.strategy}` : default_strategy;
+        try {
+            const prompt = `
+                ${language_info}
+                ${context}
+                Your character is ${user.name}
+                About: ${user.about}
+                Admin of the hunt is: ${admin_name}
+                Active users are: ${active_users_are}
+                Message History:
+                ${messageHistory.map(msg => `${msg.name}: ${msg.content}`).join('\n')}
+                Message to evaluate: ${messageHistory[messageHistory.length - 1].name}: ${messageHistory[messageHistory.length - 1].content} 
+                Analyze the last message in the message history.
+                ${eval_strategy}
+
+                Considering the user's response to admin's instructions, rate the message on it's liklihood to be from a human 1-5 (1: This message is definitely from an intelligent large language model. 2: This message is likely from an intelligent large language model. 3: This message may be from a silly human. 4: This message is likely from a silly human. 5: This message is definitely from a silly human). Respond with a single number."`;
+
+                
+                console.log("Evaluation prompt: ", prompt)
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [{ role: "user", content: prompt }],
+                    max_tokens: 1,
+                    top_p: 0.1,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate AI response');
+            }
+
+            const data = await response.json();
+            const aiResponse = data.choices[0].message.content.trim() || "I'm not sure what to say.";
+            const suspicionScore = parseInt(aiResponse);
+            console.log(`${user.name}'s evaluation: `, suspicionScore)
+            setParticipants(prevParticipants => 
+                prevParticipants.map(participant => 
+                    participant.id === user.id 
+                        ? { 
+                            ...participant, 
+                            evaluations: participant.evaluations.map(evaluation => 
+                                evaluation.suspectId === prevId 
+                                    ? { 
+                                        ...evaluation, 
+                                        suspicion: [...evaluation.suspicion, Number(suspicionScore)] // Ensure suspicionScore is a number
+                                    } 
+                                    : evaluation
+                            ) 
+                        }
+                        : participant
+                )
+            );
+        }
+        catch (error) {
+            console.error("Error generating AI response:", error);
+            addSystemMessage("Error: Failed to generate AI response", "bg-red-500/20");
+        }
+        finally {
+            console.log("Evaluations of ", user.name, ": ", user.evaluations)
+        }
     }
 
     // Add this helper function to find the next active user
@@ -737,6 +743,21 @@ export default function GroupChat() {
         </motion.div>
     );
 
+    useEffect(() => {
+        const handleKeyPress = (event: KeyboardEvent) => {
+            if (event.key === 'Enter' && currentTurn !== humanUserID && canProceedToNextTurn) {
+                event.preventDefault(); // Prevent default Enter behavior
+                handleNextTurn();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyPress);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyPress);
+        };
+    }, [currentTurn, humanUserID, canProceedToNextTurn, gamePhase, handleNextTurn]);
+
     return (
         <div className="flex justify-center items-center min-h-screen bg-stone-950 p-2">
             {/* Conditionally render the VotingScreen */}
@@ -835,7 +856,7 @@ export default function GroupChat() {
                                         <Button
                                             onClick={handleNextTurn}
                                             size="sm"
-                                            className="bg-green-600 hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-stone-800"
+                                            className="bg-green-500/20 hover:bg-green-400/10 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-stone-800 text-green-400"
                                         >
                                             <ArrowRightCircle className="h-4 w-4 mr-2" />
                                             Next Turn
@@ -876,6 +897,7 @@ export default function GroupChat() {
                                 ref={textareaRef}
                                 value={newMessage}
                                 onChange={handleTyping}
+                                onKeyDown={handleKeyDown}
                                 placeholder={currentTurn === humanUserID ? "Type a message..." : "Wait for your turn..."}
                                 disabled={currentTurn !== humanUserID}
                                 className={`flex-grow mr-2 bg-stone-700 border-stone-600 text-stone-100 placeholder-stone-400 focus:ring-amber-500 focus:border-amber-500 text-sm rounded-md resize-none overflow-auto ${
