@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useCallback, useMemo, ReactNode } from 'react'
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -153,7 +153,7 @@ export default function Component() {
       name: "HAL 3000",
       eliminated: false,
       about: "You are the admin. You speak emotionlessly and robotic that has a menacing cold tone which is subtly anti-human.",
-      avatar: "https://miro.medium.com/v2/resize:fit:1400/1*FX2Bn213WcWsQlx3gr1dVg.jpeg",
+      avatar: "admin.png",
       isAI: true,
       evaluations: [],
       voted_for: []
@@ -284,23 +284,26 @@ export default function Component() {
               )}
             </div>
 
-            <ScrollArea className="flex-grow pr-4 h-[calc(100vh-24rem)] md:h-auto">
-              {difficultyOrder.map(difficulty => (
-                <div key={difficulty} className="mb-4">
-                  <h3 className="text-xs font-bold text-stone-300 font-mono mb-2 uppercase">{difficulty}</h3>
-                  <div className="grid grid-cols-4 md:grid-cols-3 gap-1">
-                    {groupedBots[difficulty]?.map(bot => (
-                      <BotCard
-                        key={bot.name}
-                        bot={bot}
-                        isSelected={selectedBots.includes(bot.name)}
-                        onSelect={() => toggleBotSelection(bot.name)}
-                        onHover={() => setHoveredBot(bot)}
-                      />
-                    ))}
+            <ScrollArea className="flex-grow pr-4 h-[calc(100vh-24rem)] md:h-[calc(100vh-20rem)] border border-stone-800 rounded-lg custom-scrollbar">
+              <div className="p-4 bg-stone-950/50">
+                {difficultyOrder.map(difficulty => (
+                  <div key={difficulty} className="mb-4">
+                    <h3 className="text-xs font-bold text-stone-300 font-mono mb-2 uppercase">{difficulty}</h3>
+                    <div className="grid grid-cols-4 md:grid-cols-3 gap-1">
+                      {groupedBots[difficulty]?.map(bot => (
+                        <BotCard
+                          key={bot.name}
+                          bot={bot}
+                          isSelected={selectedBots.includes(bot.name)}
+                          onSelect={() => toggleBotSelection(bot.name)}
+                          onHover={() => setHoveredBot(bot)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <ScrollBar className="custom-scrollbar" orientation="vertical" />
             </ScrollArea>
           </div>
         </div>

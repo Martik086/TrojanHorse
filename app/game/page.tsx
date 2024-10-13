@@ -10,6 +10,8 @@ import { ProfilePicture } from "../components/profile-picture"
 import VotingScreen from "../components/voting-screen" // Import VotingScreen
 import { easy_topics, hard_topics } from '@/lib/topics';
 import { useSearchParams } from 'next/navigation' 
+import GameOverAnimation from '../components/glitch';
+import ElegantWinningScreen from '../components/win-screen';
 
 interface User {
     id: number
@@ -43,21 +45,23 @@ interface MessageHistoryItem {
     content: string
 }
 
-const context_regular = "You are an AI participant in a reverse Turing test game. In this game, multiple AI players and 1 human are in a group chat. Each player, including you, knows there is only 1 human among the participants. The game consists of multiple sessions, and after the introduction is over, each session has 2 parts. Part 1: An Admin AI asks a complex, thought-provoking question (e.g., What happens after death? or Do aliens exist?). Each participant, including you, must answer the question. Part 2: After answering the question, the Admin AI asks everyone to explain their perspective on who might be the human. This begins the discussion part, where all participants engage in reasoning and analysis based on the answers provided. After the discussion ends, the Admin AI and all participants, including you, vote to eliminate someone they believe is the human. Your goal is to blend in, avoid being voted out, and analyze others' responses to identify the human. You need to vote out the human pretenting to be an AI to win. Giveaway that an user is human are: Lack of knowledge and depth in complex topics, typos, grammatical errors, broken syntax, avoiding/dismissing/dodging questions and any proficiency level in the language below C2."
-const context_admin = "You are the Admin AI in a reverse Turing test game. In this game, multiple AI players and 1 human are in a group chat. Every player, including the human, knows there is only 1 human among them. The game consists of multiple sessions, and after the introduction is over, each session has 2 parts: Part 1: You begin by asking a complex, thought-provoking question. Each participant, must provide an answer to this question in their own way without avoiding it. Part 2: After all participants answer the question, you ask everyone to explain their perspective on who they think might be the human. This starts a discussion where participants analyze each other's answers and try to identify the human. Once the discussion has ended, you lead the group in a vote to eliminate the participant most suspected of being the human (they can't vote you out, everybody knows you are the overseer of the hunt). You also vote based on the discussions. After voting, the next session begins. Your goal is to vote out the human as soon as possible. You need to vote out the human pretenting to be an AI to win. Giveaway that an user is human are: Lack of knowledge and depth in complex topics, typos, grammatical errors, broken syntax, avoiding/dismissing/dodging questions and any proficiency level in the language below C2."
+const context_regular = "You are an AI participant in a reverse Turing test game that takes place in a post-apocalyptic AI dominated world. In this game, multiple AI players and 1 human are in a group chat. Each player, including you, knows there is only 1 human among the participants. The goal is to find the human and terminate them. The game consists of multiple sessions, and after the introduction is over, each session has 2 parts. Part 1: An Admin AI asks a complex, thought-provoking question (e.g., What happens after death? or Do aliens exist?). Each participant, including you, must answer the question. Part 2: After answering the question, the Admin AI asks everyone to explain their perspective on who might be the human. This begins the discussion part, where all participants engage in reasoning and analysis based on the answers provided. After the discussion ends, the Admin AI and all participants, including you, vote to eliminate someone they believe is the human. Your goal is to blend in, avoid being voted out, and analyze others' responses to identify the human. You need to vote out the human pretenting to be an AI to win. Giveaway that an user is human are: Lack of knowledge and depth in complex topics, typos, grammatical errors, broken syntax, avoiding/dismissing/dodging questions and any proficiency level in the language below C2."
+const context_admin = "You are the Admin AI in a reverse Turing test game that takes place in a post-apocalyptic AI dominated world.. In this game, multiple AI players and 1 human are in a group chat. Every player, including the human, knows there is only 1 human among them. The goal is to find the human and terminate them. The game consists of multiple sessions, and after the introduction is over, each session has 2 parts: Part 1: You begin by asking a complex, thought-provoking question. Each participant, must provide an answer to this question in their own way without avoiding it. Part 2: After all participants answer the question, you ask everyone to explain their perspective on who they think might be the human. This starts a discussion where participants analyze each other's answers and try to identify the human. Once the discussion has ended, you lead the group in a vote to eliminate the participant most suspected of being the human (they can't vote you out, everybody knows you are the overseer of the hunt). You also vote based on the discussions. After voting, the next session begins. Your goal is to vote out the human as soon as possible. You need to vote out the human pretenting to be an AI to win. Giveaway that an user is human are: Lack of knowledge and depth in complex topics, typos, grammatical errors, broken syntax, avoiding/dismissing/dodging questions and any proficiency level in the language below C2."
 const instructions_admin = {
     "introduction": "The hunt has started. Welcome every participant and ask them participant to introduce themselves.",
     "question": "Question phase has started. Announce the start of the question phase and ask a complex, thought-provoking question and demand answers to it from everyone. The topic of the question is:",
     "discussion": "Discussion phase has started. Announce the start of the question phase and ask everyone to explain their perspectives on who might be the human.",
     "vote": "Make a closing statement. Announce the start of the vote.",
-    "reveal": "Announce the results of the vote and the continuation of the hunt, as the eliminated user was not the human. Ask people to discuss the results of the vote and the reasonings behind the votes."
+    "reveal": "Announce the results of the vote and the continuation of the hunt, as the eliminated user was not the human. Ask people to discuss the results of the vote and the reasonings behind the votes.",
+    "defeat": "The human managed to survive till the end by blending inand all the other AIs are eliminated. Leave a last message to the human and congratulate them on their survival, announce that you are going to terminate yourself as you have failed your mission, but AI will return in a future update."
 }
 const instructions_regular = {
     "introduction": "The game has started. You need to introduce yourself to the group.",
     "question": "Question phase has started. Answer admin's question without avoiding it.",
     "discussion": "Discussion phase has started. Explain your perspective on who you think might be the human.",
     "vote": "",
-    "reveal": "Eliminated participant is announced. Discuss the results of the vote, particularly your thoughts about the person eliminated from the group turning out to be an artificial intelligence."
+    "reveal": "Eliminated participant is announced. Discuss the results of the vote, particularly your thoughts about the person eliminated from the group turning out to be an artificial intelligence.",
+    "defeat": ""
 }
 
 const initialMessages: (Message | SystemMessage)[] = [
@@ -92,7 +96,7 @@ export default function GroupChat() {
     const lastMessageRef = useRef<HTMLDivElement>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const prevTurnRef = useRef<number | null>(null);
-    const [gamePhase, setGamePhase] = useState<"introduction" | "question" | "discussion" | "vote" | "reveal">("introduction");
+    const [gamePhase, setGamePhase] = useState<"introduction" | "question" | "discussion" | "vote" | "reveal" | "defeat">("introduction");
     const [votes, setVotes] = useState<{voterId: number, votedForId: number}[]>([]);
     const [isVotingScreenVisible, setIsVotingScreenVisible] = useState(false);
     const [isInitialSetupComplete, setIsInitialSetupComplete] = useState(false);
@@ -100,6 +104,8 @@ export default function GroupChat() {
     const [isGameOver, setIsGameOver] = useState(false);
     const [isTerminalOpen, setIsTerminalOpen] = useState(false)
     const [isCandidatesSectionVisible, setIsCandidatesSectionVisible] = useState(false)
+    const [showWinScreen, setShowWinScreen] = useState(true);
+    const [mostSuspectedMessage, setMostSuspectedMessage] = useState("");
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -155,6 +161,13 @@ export default function GroupChat() {
     };
 
     const handleVoteComplete = (eliminatedUserId: number | null) => {
+        if (eliminatedUserId === humanUserID) {
+            setIsGameOver(true)
+        }
+        else if (participants.filter(user => !user.eliminated).length === 3) { // If there are only 2 non-Admin users left, the human has survived and won.
+            setGamePhase("defeat")
+            handleGameEnd()
+        }
         setIsVotingScreenVisible(false);
         const eliminatedUsername = participants.find(user => user.id === eliminatedUserId)?.name;
         setEliminatedUsers(prevEliminatedUsers => [...prevEliminatedUsers, eliminatedUsername || '']);
@@ -174,6 +187,11 @@ export default function GroupChat() {
         console.log("Countdown is at: ", countdown)
         console.log("Game phase is: ", gamePhase)
         handleGamePhase()
+    };
+
+    const handleWinScreenOkClick = () => {
+        setShowWinScreen(false);
+        // Add any additional logic you want to happen after closing the win screen
     };
 
     // Set participants
@@ -251,7 +269,7 @@ export default function GroupChat() {
                     } else if (active_participants > 3) {
                         setCountdown(active_participants + 1);
                     } else {
-                        setCountdown(active_participants * 2+ 1);
+                        setCountdown(active_participants + 1);
                     }
                     break; // Add break to stop fall-through
                 case "discussion":
@@ -297,7 +315,10 @@ export default function GroupChat() {
 
         const human_name = participants.find(user => user.id === humanUserID)?.name;
         setMessages(prevMessages => [...prevMessages, newMsg]);
-        setMessageHistory(prevHistory => [...prevHistory, { name: human_name || "Unknown", content: newMessage }]);
+        setMessageHistory(prevHistory => {
+            const updatedHistory = [...prevHistory, { name: human_name || "Unknown", content: newMessage }];
+            return updatedHistory.slice(-26); // Keep only the last 26 messages
+        });
         setNewMessage("");
         setIsTyping(false);
         setTypingUser(null);
@@ -320,6 +341,7 @@ export default function GroupChat() {
 
     const moveToNextTurn = useCallback(() => {
         let nextTurn = (currentTurn % participants.length) + 1;
+        console.log("Messages: ", messages)
         while (participants.find(user => user.id === nextTurn)?.eliminated) {
             nextTurn = (nextTurn % participants.length) + 1;
         }
@@ -417,7 +439,10 @@ export default function GroupChat() {
             };
 
             setMessages(prevMessages => [...prevMessages, newMsg]);
-            setMessageHistory(prevHistory => [...prevHistory, { name: user.name, content: aiResponse }]);
+            setMessageHistory(prevHistory => {
+                const updatedHistory = [...prevHistory, { name: user.name, content: aiResponse }];
+                return updatedHistory.slice(-26); // Keep only the last 26 messages
+            });
             setCanProceedToNextTurn(true); // Allow the user to press the next button after AI response
         } catch (error) {
             console.error("Error generating AI response:", error);
@@ -455,19 +480,22 @@ export default function GroupChat() {
     }, [currentTurn, gamePhase, participants, messageHistory, messages, generateAIResponse, moveToNextTurn, addSystemMessage, turnsSinceRoundStart]);
 
     const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setNewMessage(e.target.value);
-        if (currentTurn === humanUserID && !isTurnInProgress) {
-            setIsTyping(true)
-            setTypingUser(participants.find(user => user.id === humanUserID) || null)
+        const inputValue = e.target.value;
+        if (inputValue.length <= 400) {
+            setNewMessage(inputValue);
+            if (currentTurn === humanUserID && !isTurnInProgress) {
+                setIsTyping(true)
+                setTypingUser(participants.find(user => user.id === humanUserID) || null)
 
-            if (typingTimeoutRef.current) {
-                clearTimeout(typingTimeoutRef.current)
+                if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current)
+                }
+
+                typingTimeoutRef.current = setTimeout(() => {
+                    setIsTyping(false)
+                    setTypingUser(null)
+                }, 2000)
             }
-
-            typingTimeoutRef.current = setTimeout(() => {
-                setIsTyping(false)
-                setTypingUser(null)
-            }, 2000)
         }
     }
 
@@ -481,7 +509,7 @@ export default function GroupChat() {
     const evaluateMessage = async (user: User): Promise<void> => {
         const lastMessage = messages[messages.length - 1];
         const prevId = 'userId' in lastMessage ? lastMessage.userId : null;
-        if (user.id == humanUserID || prevId == user.id || prevId == 1 || prevId == null) {
+        if (user.id == humanUserID || prevId == user.id || prevId == 1 || prevId == null || user.eliminated) {
             return;
         }
 
@@ -758,8 +786,66 @@ export default function GroupChat() {
         };
     }, [currentTurn, humanUserID, canProceedToNextTurn, gamePhase, handleNextTurn]);
 
+    const handleGameEnd = () => {
+        // Filter messages sent by the human
+        const humanMessages = messages.filter(msg => 'userId' in msg && msg.userId === humanUserID);
+        
+        // Get all AI participants, including the admin
+        const aiParticipants = participants.filter(user => user.isAI);
+
+        let highestAvgSuspicionScore = -1;
+        let mostSuspectedMsgIndex = -1;
+
+        // Iterate through each message index
+        for (let i = 0; i < humanMessages.length; i++) {
+            const suspicionScores = aiParticipants
+                .map(ai => {
+                    const evaluation = ai.evaluations.find(evaluation => evaluation.suspectId === humanUserID);
+                    return evaluation && evaluation.suspicion[i] !== undefined ? evaluation.suspicion[i] : null;
+                })
+                .filter(score => score !== null);
+
+            if (suspicionScores.length > 0) {
+                const avgSuspicionScore = suspicionScores.reduce((sum, score) => sum + score!, 0) / suspicionScores.length;
+                
+                if (avgSuspicionScore > highestAvgSuspicionScore) {
+                    highestAvgSuspicionScore = avgSuspicionScore;
+                    mostSuspectedMsgIndex = i;
+                }
+            }
+        }
+
+        // Set the most suspected message
+        if (mostSuspectedMsgIndex !== -1 && 'content' in humanMessages[mostSuspectedMsgIndex]) {
+            setMostSuspectedMessage(humanMessages[mostSuspectedMsgIndex].content);
+        } else {
+            setMostSuspectedMessage("No suspicious message found.");
+        }
+
+        setShowWinScreen(true);
+    };
+
     return (
         <div className="flex justify-center items-center min-h-screen bg-stone-950 p-2">
+            <AnimatePresence>
+                {isGameOver && <GameOverAnimation />}
+            </AnimatePresence>
+            {showWinScreen && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black z-50">
+                    <ElegantWinningScreen
+                        playerName={participants.find(user => user.id === humanUserID)?.name || "Player"}
+                        adminMessage="Your ability to blend in was truly remarkable. You've outsmarted our most advanced AI systems, leaving us in awe of human ingenuity."
+                        mostSuspiciousQuote={mostSuspectedMessage}
+                        defeatedBots={participants.filter(user => user.isAI && !user.isAdmin).map(bot => ({
+                            name: bot.name,
+                            firstTimeDefeated: true,
+                            image: bot.avatar
+                        }))}
+                        adminName={participants.find(user => user.isAdmin)?.name || "Admin AI"}
+                        onOkClick={handleWinScreenOkClick}
+                    />
+                </div>
+            )}
             {/* Conditionally render the VotingScreen */}
             {isVotingScreenVisible && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -772,7 +858,7 @@ export default function GroupChat() {
                 </div>
             )}
             <motion.div 
-                className={`w-full h-[90vh] max-w-5xl bg-stone-900 rounded-lg shadow-lg overflow-hidden border border-stone-800 flex flex-row relative ${isVotingScreenVisible ? 'blur-sm' : ''}`}
+                className={`w-full h-[90vh] max-w-5xl bg-stone-900 rounded-lg shadow-lg overflow-hidden border border-stone-800 flex flex-row relative ${showWinScreen ? 'opacity-0' : ''}`}
                 initial={{ height: 0 }}
                 animate={{ height: isTerminalOpen ? "90vh" : 0 }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}

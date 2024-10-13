@@ -16,7 +16,7 @@ export default function Component() {
     const intervalId = setInterval(() => {
       setGrid((prevGrid) =>
         prevGrid.map((row) =>
-          row.map(() => Math.random() < 0.1)
+          row.map(() => Math.random() < 0.05)
         )
       )
     }, UPDATE_INTERVAL)
